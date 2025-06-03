@@ -42,17 +42,23 @@ def aggregate_demographic_by_country(all_section_stats):
             demo_summary = summary.get('demographic_analysis')
             if not demo_summary:
                 continue
-            for country, data in demo_summary.items():
-                if country not in country_data:
-                    country_data[country] = {}
-                country_data[country][f'{section}_{qkey}'] = data
+            total_responses_by_demo = demo_summary.get('total_responses_by_demo', {})
+            for demo_col, country_counts in total_responses_by_demo.items():
+                for country, count in country_counts.items():
+                    if country not in country_data:
+                        country_data[country] = {}
+                    country_data[country][f'{section}_{qkey}'] = {
+                        'total_responses': count,
+                        'question_text': demo_summary.get('question_text'),
+                        # Add more fields if needed from demo_summary['statistics']
+                    }
     return country_data
 
 client = openai.OpenAI(api_key=OPENAI_API_KEY)
 
 def generate_insights_for_country(country, country_summary):
     prompt = f"""
-You are an expert in API Security analysis. Based on the following demographic data for {country}, generate a concise insight (2-3 sentences) about API Security trends, strengths, or weaknesses for this country. Use the data to highlight any notable patterns or differences.
+You are an expert in API Security analysis. Based on the following demographic data for {country}, generate a concise insight (2-3 sentences) about API Security trends, strengths, or weaknesses for this country. Use the data to highlight any notable patterns or differences and include precise data points for evidence.
 
 Demographic Data:
 {json.dumps(country_summary, indent=2)}

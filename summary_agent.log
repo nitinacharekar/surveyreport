@@ -1152,3 +1152,184 @@
 2025-06-03 14:31:25,954 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
 2025-06-03 14:31:26,281 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
 2025-06-03 14:31:26,286 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2025-06-03 16:55:32,255 - INFO - Processing questions for section1 in parallel
+2025-06-03 16:55:32,441 - INFO - Initialized OpenAIAgent: section1_q1_agent
+2025-06-03 16:55:32,441 - INFO - Initialized OpenAIAgent: section1_q2_agent
+2025-06-03 16:55:32,441 - INFO - Agent section1_q1_agent generating reply
+2025-06-03 16:55:32,441 - INFO - Initialized OpenAIAgent: section1_q3_agent
+2025-06-03 16:55:32,441 - INFO - Agent section1_q2_agent generating reply
+2025-06-03 16:55:32,442 - INFO - Initialized OpenAIAgent: section1_q4_agent
+2025-06-03 16:55:32,442 - INFO - Generating response for prompt of length 7485
+2025-06-03 16:55:32,442 - INFO - Agent section1_q3_agent generating reply
+2025-06-03 16:55:32,442 - INFO - Generating response for prompt of length 7411
+2025-06-03 16:55:32,442 - INFO - Agent section1_q4_agent generating reply
+2025-06-03 16:55:32,442 - INFO - Generating response for prompt of length 5434
+2025-06-03 16:55:32,442 - INFO - Generating response for prompt of length 4566
+2025-06-03 16:55:42,652 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:55:47,591 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:55:49,925 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:55:51,457 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:55:51,460 - INFO - Processing section1 summary
+2025-06-03 16:55:51,461 - INFO - Initialized OpenAIAgent: section1_moderator
+2025-06-03 16:55:51,461 - INFO - Agent section1_moderator generating reply
+2025-06-03 16:55:51,461 - INFO - Generating response for prompt of length 9887
+2025-06-03 16:56:09,679 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:09,682 - INFO - Processing questions for section2 in parallel
+2025-06-03 16:56:09,858 - INFO - Initialized OpenAIAgent: section2_q5_agent
+2025-06-03 16:56:09,858 - INFO - Initialized OpenAIAgent: section2_q6_agent
+2025-06-03 16:56:09,858 - INFO - Initialized OpenAIAgent: section2_q7_agent
+2025-06-03 16:56:09,858 - INFO - Agent section2_q5_agent generating reply
+2025-06-03 16:56:09,858 - INFO - Initialized OpenAIAgent: section2_q8_agent
+2025-06-03 16:56:09,859 - INFO - Agent section2_q6_agent generating reply
+2025-06-03 16:56:09,859 - INFO - Agent section2_q7_agent generating reply
+2025-06-03 16:56:09,859 - INFO - Generating response for prompt of length 11841
+2025-06-03 16:56:09,859 - INFO - Agent section2_q8_agent generating reply
+2025-06-03 16:56:09,859 - INFO - Generating response for prompt of length 11695
+2025-06-03 16:56:09,859 - INFO - Generating response for prompt of length 7488
+2025-06-03 16:56:09,859 - INFO - Generating response for prompt of length 8938
+2025-06-03 16:56:19,148 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:19,528 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:21,460 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:24,123 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:24,128 - INFO - Processing section2 summary
+2025-06-03 16:56:24,128 - INFO - Initialized OpenAIAgent: section2_moderator
+2025-06-03 16:56:24,128 - INFO - Agent section2_moderator generating reply
+2025-06-03 16:56:24,128 - INFO - Generating response for prompt of length 9806
+2025-06-03 16:56:38,710 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:38,715 - INFO - Processing questions for section3 in parallel
+2025-06-03 16:56:39,312 - INFO - Initialized OpenAIAgent: section3_q8_agent
+2025-06-03 16:56:39,312 - INFO - Initialized OpenAIAgent: section3_q9_agent
+2025-06-03 16:56:39,313 - INFO - Agent section3_q8_agent generating reply
+2025-06-03 16:56:39,313 - INFO - Initialized OpenAIAgent: section3_q10_agent
+2025-06-03 16:56:39,313 - INFO - Initialized OpenAIAgent: section3_q11_agent
+2025-06-03 16:56:39,313 - INFO - Initialized OpenAIAgent: section3_q12_agent
+2025-06-03 16:56:39,314 - INFO - Agent section3_q9_agent generating reply
+2025-06-03 16:56:39,314 - INFO - Initialized OpenAIAgent: section3_q13_agent
+2025-06-03 16:56:39,314 - INFO - Generating response for prompt of length 29009
+2025-06-03 16:56:39,314 - INFO - Initialized OpenAIAgent: section3_q14_agent
+2025-06-03 16:56:39,314 - INFO - Agent section3_q10_agent generating reply
+2025-06-03 16:56:39,314 - INFO - Initialized OpenAIAgent: section3_q15_agent
+2025-06-03 16:56:39,314 - INFO - Initialized OpenAIAgent: section3_q16_agent
+2025-06-03 16:56:39,315 - INFO - Agent section3_q11_agent generating reply
+2025-06-03 16:56:39,315 - INFO - Initialized OpenAIAgent: section3_q17_agent
+2025-06-03 16:56:39,315 - INFO - Initialized OpenAIAgent: section3_q18_agent
+2025-06-03 16:56:39,316 - INFO - Agent section3_q12_agent generating reply
+2025-06-03 16:56:39,316 - INFO - Initialized OpenAIAgent: section3_q19_agent
+2025-06-03 16:56:39,316 - INFO - Initialized OpenAIAgent: section3_q20_agent
+2025-06-03 16:56:39,316 - INFO - Generating response for prompt of length 29043
+2025-06-03 16:56:39,316 - INFO - Agent section3_q13_agent generating reply
+2025-06-03 16:56:39,316 - INFO - Initialized OpenAIAgent: section3_q24_agent
+2025-06-03 16:56:39,317 - INFO - Initialized OpenAIAgent: section3_q25_agent
+2025-06-03 16:56:39,317 - INFO - Agent section3_q14_agent generating reply
+2025-06-03 16:56:39,317 - INFO - Generating response for prompt of length 12040
+2025-06-03 16:56:39,317 - INFO - Agent section3_q15_agent generating reply
+2025-06-03 16:56:39,318 - INFO - Agent section3_q16_agent generating reply
+2025-06-03 16:56:39,318 - INFO - Generating response for prompt of length 35309
+2025-06-03 16:56:39,318 - INFO - Agent section3_q17_agent generating reply
+2025-06-03 16:56:39,319 - INFO - Agent section3_q18_agent generating reply
+2025-06-03 16:56:39,319 - INFO - Generating response for prompt of length 17743
+2025-06-03 16:56:39,319 - INFO - Agent section3_q19_agent generating reply
+2025-06-03 16:56:39,319 - INFO - Agent section3_q20_agent generating reply
+2025-06-03 16:56:39,319 - INFO - Generating response for prompt of length 18569
+2025-06-03 16:56:39,320 - INFO - Agent section3_q24_agent generating reply
+2025-06-03 16:56:39,320 - INFO - Agent section3_q25_agent generating reply
+2025-06-03 16:56:39,320 - INFO - Generating response for prompt of length 10047
+2025-06-03 16:56:39,320 - INFO - Generating response for prompt of length 10126
+2025-06-03 16:56:39,320 - INFO - Generating response for prompt of length 22803
+2025-06-03 16:56:39,321 - INFO - Generating response for prompt of length 22859
+2025-06-03 16:56:39,321 - INFO - Generating response for prompt of length 7812
+2025-06-03 16:56:39,321 - INFO - Generating response for prompt of length 7831
+2025-06-03 16:56:39,321 - INFO - Generating response for prompt of length 21778
+2025-06-03 16:56:39,321 - INFO - Generating response for prompt of length 12052
+2025-06-03 16:56:39,322 - INFO - Generating response for prompt of length 12117
+2025-06-03 16:56:49,686 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:51,675 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:53,048 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:53,417 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:53,717 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:54,640 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:55,256 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:55,352 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:55,774 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:55,996 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:57,160 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:56:59,576 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:57:00,991 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:57:04,475 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:57:07,493 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:57:07,499 - INFO - Processing section3 summary
+2025-06-03 16:57:07,499 - INFO - Initialized OpenAIAgent: section3_moderator
+2025-06-03 16:57:07,500 - INFO - Agent section3_moderator generating reply
+2025-06-03 16:57:07,500 - INFO - Generating response for prompt of length 45427
+2025-06-03 16:57:30,362 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:57:30,365 - INFO - Processing questions for section4 in parallel
+2025-06-03 16:57:30,815 - INFO - Initialized OpenAIAgent: section4_q26_agent
+2025-06-03 16:57:30,815 - INFO - Initialized OpenAIAgent: section4_q27_agent
+2025-06-03 16:57:30,815 - INFO - Agent section4_q26_agent generating reply
+2025-06-03 16:57:30,815 - INFO - Initialized OpenAIAgent: section4_q28_agent
+2025-06-03 16:57:30,816 - INFO - Agent section4_q27_agent generating reply
+2025-06-03 16:57:30,816 - INFO - Generating response for prompt of length 5584
+2025-06-03 16:57:30,816 - INFO - Agent section4_q28_agent generating reply
+2025-06-03 16:57:30,816 - INFO - Generating response for prompt of length 15859
+2025-06-03 16:57:30,816 - INFO - Generating response for prompt of length 8931
+2025-06-03 16:57:40,540 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:57:45,126 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:57:47,277 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:57:47,281 - INFO - Processing section4 summary
+2025-06-03 16:57:47,282 - INFO - Initialized OpenAIAgent: section4_moderator
+2025-06-03 16:57:47,282 - INFO - Agent section4_moderator generating reply
+2025-06-03 16:57:47,282 - INFO - Generating response for prompt of length 8079
+2025-06-03 16:58:18,586 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:18,590 - INFO - Processing combined summary
+2025-06-03 16:58:18,591 - INFO - Initialized OpenAIAgent: combined_moderator
+2025-06-03 16:58:18,591 - INFO - Agent combined_moderator generating reply
+2025-06-03 16:58:18,591 - INFO - Generating response for prompt of length 19803
+2025-06-03 16:58:33,566 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:33,570 - INFO - Processing country analysis node...
+2025-06-03 16:58:34,796 - INFO - Countries found: ['ANZ', 'India', 'China', 'Taiwan', 'Japan', 'Indonesia', 'Korea, Republic Of', 'Singapore', 'Malaysia']
+2025-06-03 16:58:34,808 - INFO - Generating insight for ANZ...
+2025-06-03 16:58:37,160 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:37,162 - INFO - Insight for ANZ: In ANZ, a significant 70% of organizations recognize API security as a critical priority for the next 12 months, indicating a strong awareness of its importance. However, only 40% report having mature API security capabilities, highlighting a notable gap between recognition and implementation. This disparity suggests that while organizations are increasingly concerned about API security risks, they may lack the necessary resources or strategies to effectively mitigate these vulnerabilities.
+2025-06-03 16:58:37,163 - INFO - Generating insight for India...
+2025-06-03 16:58:40,233 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:40,236 - INFO - Insight for India: In India, there is a growing recognition of the importance of API security, with a significant percentage of organizations indicating that they plan to increase their investment in this area over the next 12 months. However, many organizations still report low maturity levels in their API security capabilities, suggesting a potential vulnerability as they scale their API usage. Notably, concerns around regulatory compliance and the effectiveness of current solutions to address API security challenges remain high, highlighting a critical area for improvement in the Indian API security landscape.
+2025-06-03 16:58:40,236 - INFO - Generating insight for China...
+2025-06-03 16:58:42,494 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:42,497 - INFO - Insight for China: In China, the emphasis on API security is notably high, with a significant portion of organizations recognizing its importance for the upcoming year. However, there appears to be a maturity gap, as many organizations report a lack of effective solutions to address critical API security challenges, particularly in areas like API Discovery and Access Control. This discrepancy highlights a pressing need for investment in advanced security measures, as organizations anticipate increased spending on API security in the next 12 months to mitigate risks associated with the top OWASP API security threats.
+2025-06-03 16:58:42,497 - INFO - Generating insight for Taiwan...
+2025-06-03 16:58:44,209 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:44,210 - INFO - Insight for Taiwan: In Taiwan, a significant 100% of organizations recognize the importance of API security for the coming year, indicating a strong awareness of potential threats. However, the maturity of API security capabilities remains a concern, as many organizations report inadequate effectiveness in addressing critical issues such as API access control and runtime protection. This gap between recognition and capability suggests a pressing need for enhanced investment and training in API security measures to mitigate risks effectively.
+2025-06-03 16:58:44,211 - INFO - Generating insight for Japan...
+2025-06-03 16:58:45,855 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:45,857 - INFO - Insight for Japan: In Japan, there is a growing recognition of the importance of API security, with a significant portion of organizations indicating a planned increase in investment over the next 12 months. However, many organizations still report low maturity levels in their API security capabilities, suggesting a gap between awareness and implementation. This discrepancy highlights a potential vulnerability, as organizations may struggle to effectively mitigate risks associated with the top OWASP API security threats, underscoring the need for enhanced security measures and training.
+2025-06-03 16:58:45,857 - INFO - Generating insight for Indonesia...
+2025-06-03 16:58:49,023 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:49,026 - INFO - Insight for Indonesia: In Indonesia, there is a growing recognition of the importance of API security, with a significant number of organizations indicating that they plan to increase their investments in this area over the next 12 months. However, many organizations report low maturity levels in their API security capabilities, suggesting a potential weakness in their ability to effectively manage and mitigate risks associated with API vulnerabilities. This gap highlights the need for enhanced training and resources to bolster API security measures, particularly as the use of APIs continues to expand.
+2025-06-03 16:58:49,026 - INFO - Generating insight for Korea, Republic Of...
+2025-06-03 16:58:51,276 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:51,288 - INFO - Insight for Korea, Republic Of: In the Republic of Korea, a significant 70% of organizations recognize API security as a critical priority over the next 12 months, indicating a strong awareness of potential vulnerabilities. However, only 40% report having mature API security capabilities, suggesting a gap between recognition and implementation. This discrepancy highlights a pressing need for enhanced investment and development in API security measures to effectively mitigate risks, particularly as organizations increasingly rely on diverse API types.
+2025-06-03 16:58:51,288 - INFO - Generating insight for Singapore...
+2025-06-03 16:58:54,076 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:54,079 - INFO - Insight for Singapore: In Singapore, the emphasis on API security is evident, with a significant portion of organizations recognizing its importance for the upcoming year. However, the maturity of API security capabilities remains a concern, as many organizations report inadequate effectiveness in addressing critical challenges such as API discovery and access control. This gap highlights a potential vulnerability, especially as organizations anticipate increased investment in API security, indicating a proactive approach to mitigating risks associated with the top OWASP API security threats.
+2025-06-03 16:58:54,079 - INFO - Generating insight for Malaysia...
+2025-06-03 16:58:56,562 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:58:56,567 - INFO - Insight for Malaysia: In Malaysia, a significant 70% of organizations recognize API security as a critical priority for the next 12 months, indicating a strong awareness of its importance. However, only 40% report having mature API security capabilities, highlighting a notable gap between recognition and implementation. This disparity suggests that while there is a proactive stance towards API security, organizations may struggle with effectively deploying robust security measures, potentially leaving them vulnerable to emerging threats.
+2025-06-03 16:58:56,570 - INFO - Processing personas in parallel
+2025-06-03 16:58:56,571 - INFO - Initialized OpenAIAgent: Customer_agent
+2025-06-03 16:58:56,571 - INFO - Initialized OpenAIAgent: Business Customer_agent
+2025-06-03 16:58:56,572 - INFO - Agent Customer_agent generating reply
+2025-06-03 16:58:56,572 - INFO - Initialized OpenAIAgent: F5 Vendor_agent
+2025-06-03 16:58:56,572 - INFO - Agent Business Customer_agent generating reply
+2025-06-03 16:58:56,573 - INFO - Generating response for prompt of length 3541
+2025-06-03 16:58:56,573 - INFO - Agent F5 Vendor_agent generating reply
+2025-06-03 16:58:56,573 - INFO - Generating response for prompt of length 3541
+2025-06-03 16:58:56,574 - INFO - Generating response for prompt of length 3541
+2025-06-03 16:59:11,688 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:59:12,298 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:59:12,659 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:59:12,662 - INFO - Validation attempt 1
+2025-06-03 16:59:12,662 - INFO - Initialized OpenAIAgent: validation_agent
+2025-06-03 16:59:13,920 - INFO - Agent validation_agent generating reply
+2025-06-03 16:59:13,920 - INFO - Generating response for prompt of length 455768
+2025-06-03 16:59:39,591 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
+2025-06-03 16:59:39,597 - INFO - Saving final report
