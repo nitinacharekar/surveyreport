@@ -6,17 +6,22 @@ It uses a graph-based workflow to coordinate multiple agents that process questi
 create summaries, and validate outputs with retry capabilities.
 
 The workflow consists of:
-1. Question processing (parallel)
-2. Section summarization
-3. Persona analysis (parallel)
-4. Validation with feedback loop
+1. Question processing for each section (parallel)
+2. Section summarization for each section
+3. Combined section analysis
+4. Country demographic analysis
+5. Persona analysis (parallel)
+6. Validation with feedback loop
 """
 
 import os
 import json
 from pathlib import Path
+from statistical_analysis.Section1.section1_full_stats import get_section1_stats
+from statistical_analysis.Section2.section2_full_stats import get_section2_stats
+from statistical_analysis.Section3.section3_full_stats import get_section3_stats
 from statistical_analysis.Section4.section4_full_stats import get_section4_stats
-import google.generativeai as genai
+import openai
 import autogen
 import concurrent.futures
 import re
@@ -36,13 +41,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Gemini LLM Configuration
-GOOGLE_API_KEY = 'AIzaSyASv53dkC5KPaxjNYIpFexVbNmniHp__Hk'
-genai.configure(api_key=GOOGLE_API_KEY)
+# OpenAI Configuration
+OPENAI_API_KEY = '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'
+openai.api_key = OPENAI_API_KEY
 
-def gemini_llm(prompt: str) -> str:
+def openai_llm(prompt: str) -> str:
     """
-    Generate a response using the Gemini LLM.
+    Generate a response using OpenAI's GPT-4.
     
     Args:
         prompt: The input prompt for the LLM
@@ -51,30 +56,39 @@ def gemini_llm(prompt: str) -> str:
         The generated text response
     """
     logger.info(f"Generating response for prompt of length {len(prompt)}")
-    response = genai.GenerativeModel('models/gemini-1.5-flash').generate_content(prompt)
-    logger.debug(f"Generated response: {response.text[:100]}...")
-    return response.text
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": "You are a helpful AI assistant that analyzes and summarizes data."},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.7,
+        max_tokens=2000
+    )
+    logger.debug(f"Generated response: {response.choices[0].message.content[:100]}...")
+    return response.choices[0].message.content
 
-class GeminiAgent(autogen.ConversableAgent):
+class OpenAIAgent(autogen.ConversableAgent):
     """
-    Custom agent implementation using Gemini LLM.
-    Extends the base ConversableAgent with Gemini-specific functionality.
+    Custom agent implementation using OpenAI GPT-4.
+    Extends the base ConversableAgent with OpenAI-specific functionality.
     """
     
     def __init__(self, name: str, system_message: str):
         """
-        Initialize the Gemini agent.
+        Initialize the OpenAI agent.
         
         Args:
             name: Unique identifier for the agent
             system_message: The system message defining the agent's role and behavior
         """
         super().__init__(name=name, llm_config=None, system_message=system_message)
-        logger.info(f"Initialized GeminiAgent: {name}")
+        logger.info(f"Initialized OpenAIAgent: {name}")
     
     def generate_reply(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """
-        Generate a reply using the Gemini LLM.
+        Generate a reply using OpenAI GPT-4.
         
         Args:
             messages: List of message dictionaries containing the conversation history
@@ -84,7 +98,7 @@ class GeminiAgent(autogen.ConversableAgent):
         """
         prompt = messages[-1]['content']
         logger.info(f"Agent {self.name} generating reply")
-        return gemini_llm(prompt)
+        return openai_llm(prompt)
 
 # State Management
 class AgentState(TypedDict):
@@ -92,21 +106,30 @@ class AgentState(TypedDict):
     Type definition for the agent state.
     Tracks all necessary information throughout the workflow.
     """
-    per_question_outputs: Dict[str, str]  # Question-specific analyses
-    section_summary: str                  # Overall section summary
-    persona_outputs: Dict[str, str]       # Persona-specific interpretations
-    validation: str                       # Current validation result
-    validation_feedback: str              # Detailed feedback for improvements
-    current_attempt: int                  # Current retry attempt number
-    needs_question_rerun: bool           # Flag for question rerun
-    needs_section_rerun: bool            # Flag for section rerun
+    section1_outputs: Dict[str, str]  # Section 1 question analyses
+    section2_outputs: Dict[str, str]  # Section 2 question analyses
+    section3_outputs: Dict[str, str]  # Section 3 question analyses
+    section4_outputs: Dict[str, str]  # Section 4 question analyses
+    section1_summary: str             # Section 1 summary
+    section2_summary: str             # Section 2 summary
+    section3_summary: str             # Section 3 summary
+    section4_summary: str             # Section 4 summary
+    combined_summary: str             # Combined analysis of all sections
+    country_analysis: Dict[str, str]  # Country-specific analyses
+    country_summary: str              # Combined country analysis summary
+    persona_outputs: Dict[str, str]   # Persona-specific interpretations
+    validation: str                   # Current validation result
+    validation_feedback: str          # Detailed feedback for improvements
+    current_attempt: int             # Current retry attempt number
+    needs_section_rerun: Dict[str, bool]  # Flags for section rerun
 
 # Node Functions
-def process_single_question(q: str, stats: Dict[str, Any], state: AgentState) -> Tuple[str, str]:
+def process_single_question(section: str, q: str, stats: Dict[str, Any], state: AgentState) -> Tuple[str, str]:
     """
     Process a single question with its statistics.
     
     Args:
+        section: Section identifier
         q: Question identifier
         stats: Statistics for the question
         state: Current workflow state
@@ -115,67 +138,190 @@ def process_single_question(q: str, stats: Dict[str, Any], state: AgentState) ->
         Tuple of (question_id, analysis)
     """
     feedback_prompt = ""
-    if state['validation_feedback'] and state['needs_question_rerun']:
+    if state['validation_feedback'] and state['needs_section_rerun'].get(section, False):
         feedback_prompt = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your analysis."
     
-    agent = GeminiAgent(
-        name=f"{q}_agent",
-        system_message=f"""You are an expert analyst for {q}. Write a data-grounded summary and analysis of the following statistics. 
-        Highlight key trends, outliers, and actionable insights. Do not hallucinate and only output the summary and analysis.
+    agent = OpenAIAgent(
+        name=f"{section}_{q}_agent",
+        system_message=f"""You are an expert analyst for {section} - {q}. Write a concise data-grounded summary and analysis of the following statistics in 1-2 sentences maximum. 
+        Highlight only the most important trend or insight. Do not hallucinate and be extremely brief.
         {feedback_prompt}"""
     )
     prompt = f"Statistics:\n{json.dumps(stats, indent=2)}"
     return q, agent.generate_reply([{'role': 'user', 'content': prompt}])
 
-def process_questions(state: AgentState) -> AgentState:
+def process_section_questions(section: str, state: AgentState) -> AgentState:
     """
-    Process all questions in parallel.
+    Process all questions for a specific section in parallel.
     
     Args:
+        section: Section identifier
         state: Current workflow state
         
     Returns:
-        Updated state with question analyses
+        Updated state with section question analyses
     """
-    logger.info("Processing questions in parallel")
-    section4_stats = get_section4_stats()
+    logger.info(f"Processing questions for {section} in parallel")
+    
+    # Get section stats
+    section_stats = {
+        'section1': get_section1_stats,
+        'section2': get_section2_stats,
+        'section3': get_section3_stats,
+        'section4': get_section4_stats
+    }[section]()
     
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_to_question = {
-            executor.submit(process_single_question, q, stats, state): q 
-            for q, stats in section4_stats.items()
+            executor.submit(process_single_question, section, q, stats, state): q 
+            for q, stats in section_stats.items()
         }
         for future in concurrent.futures.as_completed(future_to_question):
             q, output = future.result()
-            state['per_question_outputs'][q] = output
-            logger.debug(f"Completed question: {q}")
+            state[f'{section}_outputs'][q] = output
+            logger.debug(f"Completed {section} question: {q}")
     
     return state
 
-def process_section(state: AgentState) -> AgentState:
+def process_section_summary(section: str, state: AgentState) -> AgentState:
     """
     Process the section summary based on question analyses.
     
     Args:
+        section: Section identifier
         state: Current workflow state
         
     Returns:
         Updated state with section summary
     """
-    logger.info("Processing section summary")
+    logger.info(f"Processing {section} summary")
     feedback_prompt = ""
-    if state['validation_feedback'] and state['needs_section_rerun']:
+    if state['validation_feedback'] and state['needs_section_rerun'].get(section, False):
         feedback_prompt = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your synthesis."
     
-    section_moderator = GeminiAgent(
-        name="section_moderator",
-        system_message=f"""You are a Section Moderator. Synthesize the following per-question summaries into 2-3 key insight themes for Section 4. 
-        Highlight cross-question patterns and any surprising findings. Do not hallucinate and only output the summary and analysis.
+    section_moderator = OpenAIAgent(
+        name=f"{section}_moderator",
+        system_message=f"""You are a Section Moderator for {section}. Synthesize the following per-question summaries into exactly 4 sentences maximum. 
+        Focus on the most important cross-question patterns and key findings. Be extremely concise and avoid any redundancy.
         {feedback_prompt}"""
     )
-    section_prompt = "\n\n".join(state['per_question_outputs'].values())
-    state['section_summary'] = section_moderator.generate_reply([{'role': 'user', 'content': section_prompt}])
+    section_prompt = "\n\n".join(state[f'{section}_outputs'].values())
+    state[f'{section}_summary'] = section_moderator.generate_reply([{'role': 'user', 'content': section_prompt}])
     return state
+
+def process_combined_summary(state: AgentState) -> AgentState:
+    """
+    Process the combined summary of all sections.
+    
+    Args:
+        state: Current workflow state
+        
+    Returns:
+        Updated state with combined summary
+    """
+    logger.info("Processing combined summary")
+    feedback_prompt = ""
+    if state['validation_feedback']:
+        feedback_prompt = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your synthesis."
+    
+    combined_moderator = OpenAIAgent(
+        name="combined_moderator",
+        system_message=f"""You are a Combined Analysis Moderator. Synthesize the following section summaries into exactly 4 sentences maximum. 
+        Focus only on the most significant cross-section patterns and key insights. Be extremely concise and avoid any redundancy.
+        {feedback_prompt}"""
+    )
+    
+    section_summaries = {
+        'Section 1': state['section1_summary'],
+        'Section 2': state['section2_summary'],
+        'Section 3': state['section3_summary'],
+        'Section 4': state['section4_summary']
+    }
+    
+    combined_prompt = "\n\n".join([f"{section}:\n{summary}" for section, summary in section_summaries.items()])
+    state['combined_summary'] = combined_moderator.generate_reply([{'role': 'user', 'content': combined_prompt}])
+    return state
+
+def process_country_analysis(state: AgentState) -> AgentState:
+    """
+    Process country-specific analyses from all sections.
+    
+    Args:
+        state: Current workflow state
+        
+    Returns:
+        Updated state with country analyses
+    """
+    logger.info("Processing country-specific analyses")
+    
+    # Get all section stats
+    all_stats = {
+        'section1': get_section1_stats(),
+        'section2': get_section2_stats(),
+        'section3': get_section3_stats(),
+        'section4': get_section4_stats()
+    }
+    
+    # Extract country data from each section
+    country_data = {}
+    for section, stats in all_stats.items():
+        for q_id, q_stats in stats.items():
+            if 'demographic_breakdowns' in q_stats and 'Country' in q_stats['demographic_breakdowns']:
+                for country_stats in q_stats['demographic_breakdowns']['Country']:
+                    country = country_stats['Country']
+                    if country not in country_data:
+                        country_data[country] = []
+                    country_data[country].append({
+                        'section': section,
+                        'question': q_id,
+                        'data': country_stats
+                    })
+    
+    # Process each country's data
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_country = {
+            executor.submit(process_single_country, country, data, state): country
+            for country, data in country_data.items()
+        }
+        for future in concurrent.futures.as_completed(future_to_country):
+            country, output = future.result()
+            state['country_analysis'][country] = output
+            logger.debug(f"Completed country analysis: {country}")
+    
+    # Create combined country summary
+    country_summarizer = OpenAIAgent(
+        name="country_summarizer",
+        system_message="""You are a Country Analysis Moderator. Analyze the country-specific insights from all sections 
+        and identify key patterns, differences, and trends across countries. Highlight any notable regional variations 
+        or country-specific challenges. Do not hallucinate and only output the summary and analysis."""
+    )
+    
+    country_prompt = "\n\n".join([f"{country}:\n{analysis}" for country, analysis in state['country_analysis'].items()])
+    state['country_summary'] = country_summarizer.generate_reply([{'role': 'user', 'content': country_prompt}])
+    
+    return state
+
+def process_single_country(country: str, country_data: List[Dict], state: AgentState) -> Tuple[str, str]:
+    """
+    Process analysis for a single country.
+    
+    Args:
+        country: Country name
+        country_data: List of question data for the country
+        state: Current workflow state
+        
+    Returns:
+        Tuple of (country, analysis)
+    """
+    agent = OpenAIAgent(
+        name=f"{country}_analyst",
+        system_message=f"""You are a Country Analyst for {country}. Analyze the following country-specific data 
+        across all sections and questions in exactly 2 sentences maximum. Focus only on the most significant trend or insight.
+        Compare with overall trends where relevant. Be extremely concise."""
+    )
+    
+    prompt = f"Country Data:\n{json.dumps(country_data, indent=2)}"
+    return country, agent.generate_reply([{'role': 'user', 'content': prompt}])
 
 def process_personas(state: AgentState) -> AgentState:
     """
@@ -196,7 +342,7 @@ def process_personas(state: AgentState) -> AgentState:
     
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_to_persona = {
-            executor.submit(process_single_persona, persona_name, persona_msg, state['section_summary']): persona_name
+            executor.submit(process_single_persona, persona_name, persona_msg, state['combined_summary']): persona_name
             for persona_name, persona_msg in personas
         }
         for future in concurrent.futures.as_completed(future_to_persona):
@@ -206,23 +352,23 @@ def process_personas(state: AgentState) -> AgentState:
     
     return state
 
-def process_single_persona(persona_name: str, persona_msg: str, section_summary: str) -> Tuple[str, str]:
+def process_single_persona(persona_name: str, persona_msg: str, combined_summary: str) -> Tuple[str, str]:
     """
     Process a single persona analysis.
     
     Args:
         persona_name: Name of the persona
         persona_msg: System message for the persona
-        section_summary: Current section summary
+        combined_summary: Current combined summary
         
     Returns:
         Tuple of (persona_name, analysis)
     """
-    agent = GeminiAgent(
+    agent = OpenAIAgent(
         name=f"{persona_name}_agent",
-        system_message=persona_msg
+        system_message=f"{persona_msg} Provide your interpretation in exactly 2 sentences maximum. Be extremely concise."
     )
-    return persona_name, agent.generate_reply([{'role': 'user', 'content': section_summary}])
+    return persona_name, agent.generate_reply([{'role': 'user', 'content': combined_summary}])
 
 def validate_output(state: AgentState) -> AgentState:
     """
@@ -235,20 +381,34 @@ def validate_output(state: AgentState) -> AgentState:
         Updated state with validation results
     """
     logger.info(f"Validation attempt {state['current_attempt'] + 1}")
-    validation_agent = GeminiAgent(
+    validation_agent = OpenAIAgent(
         name="validation_agent",
         system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. 
-        Flag any hallucinations or unsupported claims. If you find issues, specify which parts need to be rerun by including either 'QUESTION' or 'SECTION' in your response.
-        If all is well, include the word 'APPROVED' in your response. Be specific about what needs to be fixed and why."""
+        Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. If you find issues, specify which sections need to be rerun.
+        If all is well, include the word 'APPROVED' in your response. Be extremely concise."""
     )
     
-    validation_prompt = f"Summaries:\n{json.dumps({'per_question': state['per_question_outputs'], 'section_summary': state['section_summary'], 'personas': state['persona_outputs']}, indent=2)}\n\nStatistics:\n{json.dumps(get_section4_stats(), indent=2)}"
+    all_stats = {
+        'section1': get_section1_stats(),
+        'section2': get_section2_stats(),
+        'section3': get_section3_stats(),
+        'section4': get_section4_stats()
+    }
+    
+    validation_prompt = f"Summaries:\n{json.dumps({
+        'section_summaries': {f'section{i}': state[f'section{i}_summary'] for i in range(1, 5)},
+        'combined_summary': state['combined_summary'],
+        'country_analysis': state['country_analysis'],
+        'country_summary': state['country_summary'],
+        'personas': state['persona_outputs']
+    }, indent=2)}\n\nStatistics:\n{json.dumps(all_stats, indent=2)}"
+    
     state['validation'] = validation_agent.generate_reply([{'role': 'user', 'content': validation_prompt}])
     
     # Extract feedback and update rerun flags
     state['validation_feedback'] = state['validation']
-    state['needs_question_rerun'] = "QUESTION" in state['validation'].upper()
-    state['needs_section_rerun'] = "SECTION" in state['validation'].upper()
+    for section in ['section1', 'section2', 'section3', 'section4']:
+        state['needs_section_rerun'][section] = section.upper() in state['validation'].upper()
     
     return state
 
@@ -262,14 +422,7 @@ def should_continue(state: AgentState) -> str:
     Returns:
         Next node identifier
     """
-    if "APPROVED" in state['validation'].upper():
-        return "end"
-    if state['current_attempt'] >= 2:  # max 3 attempts (0-based)
-        return "end"
-    if state['needs_question_rerun']:
-        return "questions"
-    if state['needs_section_rerun']:
-        return "section"
+    # Always end after first validation attempt
     return "end"
 
 def increment_attempt(state: AgentState) -> AgentState:
@@ -297,13 +450,17 @@ def save_final_report(state: AgentState) -> AgentState:
     """
     logger.info("Saving final report")
     final_report = {
-        "per_question": state['per_question_outputs'],
-        "section_summary": state['section_summary'],
+        "section_summaries": {
+            f"section{i}": state[f'section{i}_summary'] for i in range(1, 5)
+        },
+        "combined_summary": state['combined_summary'],
+        "country_analysis": state['country_analysis'],
+        "country_summary": state['country_summary'],
         "personas": state['persona_outputs'],
         "validation": state['validation']
     }
-    output_path = 'output/section4/section4_final_report.json'
-    Path('output/section4').mkdir(parents=True, exist_ok=True)
+    output_path = 'output/final_report.json'
+    Path('output').mkdir(parents=True, exist_ok=True)
     with open(output_path, 'w') as f:
         json.dump(final_report, f, indent=2)
     logger.info(f"Final report saved to {output_path}")
@@ -315,47 +472,74 @@ def main():
     """
     # Initialize state
     initial_state: AgentState = {
-        "per_question_outputs": {},
-        "section_summary": "",
+        "section1_outputs": {},
+        "section2_outputs": {},
+        "section3_outputs": {},
+        "section4_outputs": {},
+        "section1_summary": "",
+        "section2_summary": "",
+        "section3_summary": "",
+        "section4_summary": "",
+        "combined_summary": "",
+        "country_analysis": {},
+        "country_summary": "",
         "persona_outputs": {},
         "validation": "",
         "validation_feedback": "",
         "current_attempt": 0,
-        "needs_question_rerun": False,
-        "needs_section_rerun": False
+        "needs_section_rerun": {
+            "section1": False,
+            "section2": False,
+            "section3": False,
+            "section4": False
+        }
     }
     
     # Create graph
     workflow = StateGraph(AgentState)
     
-    # Add nodes
-    workflow.add_node("questions", process_questions)
-    workflow.add_node("section", process_section)
-    workflow.add_node("personas", process_personas)
-    workflow.add_node("validate", validate_output)
-    workflow.add_node("increment", increment_attempt)
-    workflow.add_node("save", save_final_report)
+    # Add nodes for each section
+    for section in ['section1', 'section2', 'section3', 'section4']:
+        workflow.add_node(f"process_{section}", lambda s, sec=section: process_section_questions(sec, s))
+        workflow.add_node(f"summarize_{section}", lambda s, sec=section: process_section_summary(sec, s))
     
-    # Add edges with conditional routing
-    workflow.add_edge(START, "questions")
-    workflow.add_edge("questions", "section")
-    workflow.add_edge("section", "personas")
-    workflow.add_edge("personas", "validate")
-    workflow.add_edge("validate", "increment")
+    # Add other nodes
+    workflow.add_node("process_combined", process_combined_summary)
+    # workflow.add_node("process_country", process_country_analysis)  # Commented out country analysis
+    workflow.add_node("process_personas", process_personas)
+    workflow.add_node("validate_output", validate_output)
+    workflow.add_node("increment_attempt", increment_attempt)
+    workflow.add_node("save_report", save_final_report)
+    
+    # Add edges from START to each section
+    workflow.add_edge(START, "process_section1")
+    
+    # Add edges between section nodes
+    workflow.add_edge("process_section1", "summarize_section1")
+    workflow.add_edge("summarize_section1", "process_section2")
+    workflow.add_edge("process_section2", "summarize_section2")
+    workflow.add_edge("summarize_section2", "process_section3")
+    workflow.add_edge("process_section3", "summarize_section3")
+    workflow.add_edge("summarize_section3", "process_section4")
+    workflow.add_edge("process_section4", "summarize_section4")
+    
+    # Add edges for combined analysis and country analysis
+    workflow.add_edge("summarize_section4", "process_combined")
+    workflow.add_edge("process_combined", "process_personas")  # Skip country analysis
+    workflow.add_edge("process_personas", "validate_output")
+    workflow.add_edge("validate_output", "increment_attempt")
     
     # Add conditional edges from increment
     workflow.add_conditional_edges(
-        "increment",
+        "increment_attempt",
         should_continue,
         {
-            "questions": "questions",
-            "section": "section",
-            "end": "save"
+            "end": "save_report"  # Only end option now
         }
     )
     
     # Add final edge
-    workflow.add_edge("save", END)
+    workflow.add_edge("save_report", END)
     
     # Compile and run graph
     app = workflow.compile()
