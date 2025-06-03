@@ -6,10 +6,10 @@ It uses a graph-based workflow to coordinate multiple agents that process questi
 create summaries, and validate outputs with retry capabilities.
 
 The workflow consists of:
-1. Question processing for each section (parallel)
+1. Question processing for each section
 2. Section summarization for each section
 3. Combined section analysis
-4. Country demographic analysis
+4. Country based analysis
 5. Persona analysis (parallel)
 6. Validation with feedback loop
 """
@@ -29,6 +29,10 @@ import logging
 from typing import Dict, List, Tuple, Any, Optional, TypedDict
 from dataclasses import dataclass
 from langgraph.graph import StateGraph, START, END
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -42,7 +46,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # OpenAI Configuration
-OPENAI_API_KEY = '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'
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY not found in environment variables")
 openai.api_key = OPENAI_API_KEY
 
 def openai_llm(prompt: str) -> str:
