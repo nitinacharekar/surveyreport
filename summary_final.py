@@ -149,9 +149,7 @@ def process_single_question(section: str, q: str, stats: Dict[str, Any], state: 
     
     agent = OpenAIAgent(
         name=f"{section}_{q}_agent",
-        system_message=f"""You are an expert analyst for {section} - {q}. Write a concise data-grounded summary and analysis of the following statistics in 1-2 sentences maximum. 
-        Highlight only the most important trend or insight. Do not hallucinate and be extremely brief.
-        {feedback_prompt}"""
+        system_message=f"""You are an expert analyst for {section} - {q}. Provide a brief, reasoned analysis based on the data below. Only cite specific data points as evidence to support your claims. Do not simply restate the data. Focus on drawing insights, trends, or implications, and use the data only to support your reasoning. Be extremely concise (1-2 sentences).{feedback_prompt}"""
     )
     prompt = f"Statistics:\n{json.dumps(stats, indent=2)}"
     return q, agent.generate_reply([{'role': 'user', 'content': prompt}])
@@ -207,9 +205,7 @@ def process_section_summary(section: str, state: AgentState) -> AgentState:
     
     section_moderator = OpenAIAgent(
         name=f"{section}_moderator",
-        system_message=f"""You are a Section Moderator for {section}. Synthesize the following per-question summaries into exactly 4 sentences maximum. 
-        Focus on the most important cross-question patterns and key findings. Be extremely concise and avoid any redundancy.
-        {feedback_prompt}"""
+        system_message=f"""You are a Section Moderator for {section}. Synthesize the following per-question summaries into exactly 4 sentences maximum. Focus on the most important cross-question patterns and key findings. Provide a reasoned analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. Draw insights, trends, or implications, and use the data only to support your reasoning. Be extremely concise and avoid any redundancy.{feedback_prompt}"""
     )
     section_prompt = "\n\n".join(state[f'{section}_outputs'].values())
     state[f'{section}_summary'] = section_moderator.generate_reply([{'role': 'user', 'content': section_prompt}])
@@ -232,9 +228,7 @@ def process_combined_summary(state: AgentState) -> AgentState:
     
     combined_moderator = OpenAIAgent(
         name="combined_moderator",
-        system_message=f"""You are a Combined Analysis Moderator. Synthesize the following section summaries into exactly 4 sentences maximum. 
-        Focus only on the most significant cross-section patterns and key insights. Be extremely concise and avoid any redundancy.
-        {feedback_prompt}"""
+        system_message=f"""You are a Combined Analysis Moderator. Synthesize the following section summaries into exactly 4 sentences maximum. Focus only on the most significant cross-section patterns and key insights. Provide a reasoned analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. Draw insights, trends, or implications, and use the data only to support your reasoning. Be extremely concise and avoid any redundancy.{feedback_prompt}"""
     )
     
     section_summaries = {
@@ -351,7 +345,7 @@ def process_single_persona(persona_name: str, persona_msg: str, combined_summary
     """
     agent = OpenAIAgent(
         name=f"{persona_name}_agent",
-        system_message=f"{persona_msg} Provide your interpretation in exactly 2 sentences maximum. Be extremely concise."
+        system_message=f"{persona_msg} Provide your interpretation in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. Be extremely concise."
     )
     return persona_name, agent.generate_reply([{'role': 'user', 'content': combined_summary}])
 
@@ -368,9 +362,7 @@ def validate_output(state: AgentState) -> AgentState:
     logger.info(f"Validation attempt {state['current_attempt'] + 1}")
     validation_agent = OpenAIAgent(
         name="validation_agent",
-        system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. 
-        Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. If you find issues, specify which sections need to be rerun.
-        If all is well, include the word 'APPROVED' in your response. Be extremely concise."""
+        system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. If you find issues, specify which sections need to be rerun. If all is well, include the word 'APPROVED' in your response. Be extremely concise."""
     )
     
     all_stats = {
