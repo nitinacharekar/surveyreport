@@ -10,7 +10,7 @@ def analyze_q26(file_path: str):
     answer_col = 'Answers'
     risk_col = df.columns[5]  # Assuming the 6th column is the risk name
     id_col = 'ID'
-    demo_cols = ['Country', 'Gender', 'Age']
+    demo_cols = ['Country']
 
     # Total responses
     total_responses = len(df)
@@ -29,12 +29,12 @@ def analyze_q26(file_path: str):
 
     # Had to comment these or else token limit was consistently exceeded
     # Demographic breakdowns
-    #demo_breakdowns = {}
-    #for demo in demo_cols:
-   #     if demo in df.columns:
-    #        demo_breakdowns[demo] = df.groupby([demo, risk_col])[answer_col].agg(['sum', 'count', 'mean'])
-    #        demo_breakdowns[demo] = demo_breakdowns[demo].rename(columns={'sum': 'selected_count', 'count': 'total', 'mean': 'percent_selected'})
-    #        demo_breakdowns[demo]['percent_selected'] = (demo_breakdowns[demo]['percent_selected'] * 100).round(2)
+    demo_breakdowns = {}
+    for demo in demo_cols:
+        if demo in df.columns:
+            demo_breakdowns[demo] = df.groupby([demo, risk_col])[answer_col].agg(['sum', 'count', 'mean'])
+            demo_breakdowns[demo] = demo_breakdowns[demo].rename(columns={'sum': 'selected_count', 'count': 'total', 'mean': 'percent_selected'})
+            demo_breakdowns[demo]['percent_selected'] = (demo_breakdowns[demo]['percent_selected'] * 100).round(2)
 
     # Per-respondent stats: how many risks did each respondent select?
     if id_col in df.columns:
@@ -52,7 +52,7 @@ def analyze_q26(file_path: str):
         'total_selected': int(total_selected),
         'percent_selected': round(percent_selected, 2),
         'risk_stats': risk_stats,
-        #'demographic_breakdowns': {k: v.reset_index().to_dict(orient='records') for k, v in demo_breakdowns.items()},
+        'demographic_breakdowns': {k: v.reset_index().to_dict(orient='records') for k, v in demo_breakdowns.items()},
         'respondent_selection_distribution': selection_distribution,
         'avg_selected_per_respondent': avg_selected_per_respondent
     }

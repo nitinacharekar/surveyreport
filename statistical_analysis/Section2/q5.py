@@ -9,7 +9,7 @@ def analyze_q5(file_path: str):
     
     # Identify relevant columns
     id_col = 'ID'
-    demo_cols = ['Country', 'Gender', 'Age']
+    demo_cols = ['Country']
     api_cols = [
         'Customer-facing public APIs',
         'Partner integration APIs',

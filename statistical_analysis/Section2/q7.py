@@ -9,7 +9,7 @@ def analyze_q7(file_path: str):
     
     # Identify relevant columns
     id_col = 'ID'
-    demo_cols = ['Country', 'Gender', 'Age']
+    demo_cols = ['Country']
     aiml_cols = [
         'Large Language Models (LLMs)',
         'Computer Vision APIs',

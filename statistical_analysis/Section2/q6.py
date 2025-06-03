@@ -9,7 +9,7 @@ def analyze_q6(file_path: str):
     
     # Identify relevant columns
     id_col = 'ID'
-    demo_cols = ['Country', 'Gender', 'Age']
+    demo_cols = ['Country']
     expected_api_cols = [
         'REST APIs',
         'GraphQL APIs',

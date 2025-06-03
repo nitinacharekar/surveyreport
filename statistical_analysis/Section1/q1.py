@@ -9,7 +9,7 @@ def analyze_q1(file_path: str):
     
     # Identify relevant columns
     id_col = 'ID'
-    demo_cols = ['Country', 'Gender', 'Age']
+    demo_cols = ['Country']
     impact_col = 'Business Impact'
     priority_col = 'Digital Transformation Priority'
     compliance_col = 'Regulatory compliance Requirement'

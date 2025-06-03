@@ -9,7 +9,7 @@ def analyze_q2(file_path: str):
     
     # Identify relevant columns
     id_col = 'ID'
-    demo_cols = ['Country', 'Gender', 'Age']
+    demo_cols = ['Country']
     expertise_col = 'Technical Expertise'
     tool_col = 'Tool Maturity'
     process_col = 'Process Maturity'

@@ -9,7 +9,7 @@ def analyze_q3(file_path: str):
     
     # Identify relevant columns
     id_col = 'ID'
-    demo_cols = ['Country', 'Gender', 'Age']
+    demo_cols = ['Country']
     answer_col = 'Answers'
 
     # Total responses

@@ -5,7 +5,7 @@ from pathlib import Path
 def analyze_q28(file_path: str):
     df = pd.read_excel(file_path)
     df.columns = df.columns.str.strip()
-    demo_cols = ['Country', 'Gender', 'Age']
+    demo_cols = ['Country']
     measure_col = 'What security measures does your organization currently have in place to protect APIs?'
     answer_col = 'Answers'
 
@@ -30,19 +30,19 @@ def analyze_q28(file_path: str):
     measure_stats = measure_df.to_dict(orient='records')
 
     # Demographic breakdowns
-    #demo_breakdowns = {}
-    #for demo in demo_cols:
-    #    if demo in df.columns:
-   #         demo_breakdowns[demo] = {}
-   #         for val in df[demo].dropna().unique():
-   #             demo_df = selected[selected[demo] == val]
-   #             demo_breakdowns[demo][str(val)] = demo_df[measure_col].value_counts().to_dict()
+    demo_breakdowns = {}
+    for demo in demo_cols:
+        if demo in df.columns:
+            demo_breakdowns[demo] = {}
+            for val in df[demo].dropna().unique():
+                demo_df = selected[selected[demo] == val]
+                demo_breakdowns[demo][str(val)] = demo_df[measure_col].value_counts().to_dict()
 
     summary = {
         'question_text': question_text,
         'measure_stats': measure_stats,
         'percent_selected': percent_selected,
-        #'demographic_breakdowns': demo_breakdowns
+        'demographic_breakdowns': demo_breakdowns
     }
     return summary
 

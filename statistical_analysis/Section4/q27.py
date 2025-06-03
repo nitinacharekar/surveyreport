@@ -7,7 +7,7 @@ def analyze_q27(file_path: str):
     df = pd.read_excel(file_path)
     df.columns = df.columns.str.strip()
     sub_questions = [col for col in df.columns if col.startswith('API') and ':' in col]
-    demo_cols = ['Country', 'Gender', 'Age']
+    demo_cols = ['Country']
 
     # Extract the initial question text (assume it's the same for all rows)
     question_text = df['Questions'].iloc[0] if 'Questions' in df.columns else None
@@ -48,20 +48,20 @@ def analyze_q27(file_path: str):
             stats[k][field] = to_py_type(stats[k][field])
 
     # Demographic breakdowns (optional)
-    #demo_breakdowns = {}
-    #for demo in demo_cols:
-   #     if demo in df.columns:
-   #         demo_breakdowns[demo] = {}
-   #         for val in df[demo].dropna().unique():
-   #             demo_df = df[df[demo] == val]
-   #             demo_breakdowns[demo][str(val)] = {
-   #                 col: {str(k): int(v) for k, v in demo_df[col].value_counts().sort_index().to_dict().items()} for col in sub_questions
-   #             }
+    demo_breakdowns = {}
+    for demo in demo_cols:
+        if demo in df.columns:
+            demo_breakdowns[demo] = {}
+            for val in df[demo].dropna().unique():
+                demo_df = df[df[demo] == val]
+                demo_breakdowns[demo][str(val)] = {
+                    col: {str(k): int(v) for k, v in demo_df[col].value_counts().sort_index().to_dict().items()} for col in sub_questions
+                }
 
     summary = {
         'question_text': question_text,
         'sub_question_stats': stats,
-        #'demographic_breakdowns': demo_breakdowns
+        'demographic_breakdowns': demo_breakdowns
     }
     return summary
 
