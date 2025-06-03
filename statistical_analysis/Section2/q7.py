@@ -1,6 +1,12 @@
 import pandas as pd
 import json
 from pathlib import Path
+import sys
+import os
+
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 
 def analyze_q7(file_path: str):
     df = pd.read_excel(file_path)
@@ -15,6 +21,7 @@ def analyze_q7(file_path: str):
         'Computer Vision APIs',
         'Custom ML models'
     ]
+    value_cols = aiml_cols
 
     # Total responses
     total_responses = len(df)
@@ -39,11 +46,17 @@ def analyze_q7(file_path: str):
     aiml_averages = {col: round(df[col].mean(), 2) for col in aiml_cols}
 
     summary = {
-        'question_text': '7 API Usage in AIML Implementations- Frequency',
+        'question_text': '7 How frequently does your organization use the following AI/ML APIs?',
         'total_responses': total_responses,
-        'aiml_stats': aiml_stats,
-        'aiml_averages': aiml_averages
+        'main_stats': {
+            'aiml_stats': aiml_stats,
+            'aiml_averages': aiml_averages
+        }
     }
+    
+    # Add demographic analysis
+    summary = add_demographic_summary(summary, df, demo_cols, value_cols)
+    
     return summary
 
 if __name__ == "__main__":

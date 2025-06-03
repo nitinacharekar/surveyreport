@@ -1,6 +1,11 @@
 import pandas as pd
 import json
 from pathlib import Path
+import sys
+import os
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 
 def analyze_q19(file_path: str):
     df = pd.read_excel(file_path)
@@ -26,21 +31,19 @@ def analyze_q19(file_path: str):
     solution_stats = {}
     for col in solution_cols:
         solution_stats[col] = calculate_stats(df[col])
-    demo_breakdowns = {}
-    for demo in demo_cols:
-        if demo in df.columns:
-            demo_stats = {}
-            for col in solution_cols:
-                demo_stats[col] = df.groupby([demo, col]).size().unstack(fill_value=0).to_dict()
-            demo_breakdowns[demo] = demo_stats
+    
     solution_averages = {col: round(df[col].mean(), 2) for col in solution_cols}
+    
     summary = {
-        'question_text': '19 API Security Testing- Effectiveness',
+        'question_text': '19 How effective are your current solutions in identifying vulnerable and/or undocumented/shadow APIs?',
         'total_responses': total_responses,
-        'solution_stats': solution_stats,
-        'demographic_breakdowns': demo_breakdowns,
-        'solution_averages': solution_averages
+        'main_stats': {
+            'solution_stats': solution_stats,
+            'solution_averages': solution_averages
+        }
     }
+    # Add demographic analysis
+    summary = add_demographic_summary(summary, df, demo_cols, solution_cols)
     return summary
 
 if __name__ == "__main__":

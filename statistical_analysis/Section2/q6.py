@@ -1,6 +1,12 @@
 import pandas as pd
 import json
 from pathlib import Path
+import sys
+import os
+
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 
 def analyze_q6(file_path: str):
     df = pd.read_excel(file_path)
@@ -10,18 +16,14 @@ def analyze_q6(file_path: str):
     # Identify relevant columns
     id_col = 'ID'
     demo_cols = ['Country']
-    expected_api_cols = [
+    api_cols = [
         'REST APIs',
         'GraphQL APIs',
         'gRPC/RPC APIs',
         'Event-driven APIs',
         'Streaming APIs',
     ]
-    # Only use columns that exist in the DataFrame
-    api_cols = [col for col in expected_api_cols if col in df.columns]
-    missing_cols = [col for col in expected_api_cols if col not in df.columns]
-    if missing_cols:
-        print(f"Warning: The following columns are missing in the file and will be skipped: {missing_cols}")
+    value_cols = api_cols
 
     # Total responses
     total_responses = len(df)
@@ -46,11 +48,17 @@ def analyze_q6(file_path: str):
     api_averages = {col: round(df[col].mean(), 2) for col in api_cols}
 
     summary = {
-        'question_text': '6 API Usage Classification- Technical Architecture APIs',
+        'question_text': '6 How frequently does your organization use the following types of APIs?',
         'total_responses': total_responses,
-        'api_stats': api_stats,
-        'api_averages': api_averages,
+        'main_stats': {
+            'api_stats': api_stats,
+            'api_averages': api_averages
+        }
     }
+    
+    # Add demographic analysis
+    summary = add_demographic_summary(summary, df, demo_cols, value_cols)
+    
     return summary
 
 if __name__ == "__main__":

@@ -1,6 +1,11 @@
 import pandas as pd
 import json
 from pathlib import Path
+import sys
+import os
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 
 def analyze_q24(file_path: str):
     df = pd.read_excel(file_path)
@@ -30,11 +35,15 @@ def analyze_q24(file_path: str):
         concern_stats[col] = calculate_stats(df[col])
     concern_averages = {col: round(df[col].mean(), 2) for col in concern_cols}
     summary = {
-        'question_text': '24 Regulatory Compliance- Concern',
+        'question_text': '24 How concerning are the following regulatory compliance challenges for your organization?',
         'total_responses': total_responses,
-        'concern_stats': concern_stats,
-        'concern_averages': concern_averages
+        'main_stats': {
+            'concern_stats': concern_stats,
+            'concern_averages': concern_averages
+        }
     }
+    # Add demographic analysis
+    summary = add_demographic_summary(summary, df, demo_cols, concern_cols)
     return summary
 
 if __name__ == "__main__":

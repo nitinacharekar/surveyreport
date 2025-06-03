@@ -1,6 +1,12 @@
 import pandas as pd
 import json
 from pathlib import Path
+import sys
+import os
+
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 
 def analyze_q8(file_path: str):
     df = pd.read_excel(file_path)
@@ -17,6 +23,7 @@ def analyze_q8(file_path: str):
         'API Runtime Protection',
         'API Security Testing'
     ]
+    value_cols = concern_cols
 
     # Total responses
     total_responses = len(df)
@@ -32,29 +39,35 @@ def analyze_q8(file_path: str):
         stats_df['cumulative_percent_contribution'] = stats_df['percent_contribution'].cumsum().round(2)
         return stats_df.to_dict(orient='records')
     
-    # Calculate statistics for each concern
-    concern_stats = {}
+    # Calculate statistics for each API type
+    api_stats = {}
     for col in concern_cols:
-        concern_stats[col] = calculate_stats(df[col])
+        api_stats[col] = calculate_stats(df[col])
     
-    # Calculate averages by extracting numeric values
+    # Calculate averages by extracting numeric values from the string
     def extract_numeric_rating(rating_str):
         try:
             return float(rating_str.split(' - ')[0])
-        except:
+        except Exception:
             return None
-    
-    concern_averages = {}
+
+    api_averages = {}
     for col in concern_cols:
         numeric_ratings = df[col].apply(extract_numeric_rating)
-        concern_averages[col] = round(numeric_ratings.mean(), 2)
+        api_averages[col] = round(numeric_ratings.mean(), 2)
 
     summary = {
-        'question_text': '8 API Security Concerns- Rating',
+        'question_text': '8 For each of the following API security aspects, please rate how concerning they are for your organization?',
         'total_responses': total_responses,
-        'concern_stats': concern_stats,
-        'concern_averages': concern_averages
+        'main_stats': {
+            'api_stats': api_stats,
+            'api_averages': api_averages
+        }
     }
+    
+    # Add demographic analysis
+    summary = add_demographic_summary(summary, df, demo_cols, value_cols)
+    
     return summary
 
 if __name__ == "__main__":

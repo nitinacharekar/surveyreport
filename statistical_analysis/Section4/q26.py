@@ -1,16 +1,24 @@
 import pandas as pd
 import json
 from pathlib import Path
+import sys
+import os
+
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 
 def analyze_q26(file_path: str):
     df = pd.read_excel(file_path)
     # Clean column names
     df.columns = df.columns.str.strip()
+    
     # Identify relevant columns
     answer_col = 'Answers'
     risk_col = df.columns[5]  # Assuming the 6th column is the risk name
     id_col = 'ID'
     demo_cols = ['Country']
+    value_cols = [answer_col]
 
     # Total responses
     total_responses = len(df)
@@ -27,39 +35,23 @@ def analyze_q26(file_path: str):
     risk_stats['cumulative_percent_contribution'] = risk_stats['percent_contribution'].cumsum().round(2)
     risk_stats = risk_stats.reset_index().to_dict(orient='records')
 
-    # Had to comment these or else token limit was consistently exceeded
-    # Demographic breakdowns
-    demo_breakdowns = {}
-    for demo in demo_cols:
-        if demo in df.columns:
-            demo_breakdowns[demo] = df.groupby([demo, risk_col])[answer_col].agg(['sum', 'count', 'mean'])
-            demo_breakdowns[demo] = demo_breakdowns[demo].rename(columns={'sum': 'selected_count', 'count': 'total', 'mean': 'percent_selected'})
-            demo_breakdowns[demo]['percent_selected'] = (demo_breakdowns[demo]['percent_selected'] * 100).round(2)
-
-    # Per-respondent stats: how many risks did each respondent select?
-    if id_col in df.columns:
-        risks_selected_per_id = df[df[answer_col] == 1].groupby(id_col).size()
-        # Distribution: how many respondents selected 1, 2, 3, ... risks
-        selection_distribution = risks_selected_per_id.value_counts().sort_index().to_dict()
-        avg_selected_per_respondent = risks_selected_per_id.mean()
-    else:
-        selection_distribution = {}
-        avg_selected_per_respondent = None
-
     summary = {
         'question_text': '26 Select the top 3 OWASP API security risks your organization is most concerned about',
         'total_responses': total_responses,
         'total_selected': int(total_selected),
         'percent_selected': round(percent_selected, 2),
-        'risk_stats': risk_stats,
-        'demographic_breakdowns': {k: v.reset_index().to_dict(orient='records') for k, v in demo_breakdowns.items()},
-        'respondent_selection_distribution': selection_distribution,
-        'avg_selected_per_respondent': avg_selected_per_respondent
+        'main_stats': {
+            'risk_stats': risk_stats,
+            'average_selected': round(df[answer_col].mean(), 2)
+        }
     }
+    
+    # Add demographic analysis
+    summary = add_demographic_summary(summary, df, demo_cols, value_cols)
+    
     return summary
 
 if __name__ == "__main__":
-    # Use the correct path for the file in 'statistical_analysis/Section4/'
     file_path = '../../data/Section 4/26 Select the top 3 OWASP API security risks your organization is most concerned about.xlsx'
     stats = analyze_q26(file_path)
     print(json.dumps(stats, indent=2)) 

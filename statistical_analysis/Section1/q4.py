@@ -1,6 +1,12 @@
 import pandas as pd
 import json
 from pathlib import Path
+import sys
+import os
+
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 
 def analyze_q4(file_path: str):
     df = pd.read_excel(file_path)
@@ -11,6 +17,7 @@ def analyze_q4(file_path: str):
     id_col = 'ID'
     demo_cols = ['Country']
     answer_col = 'Answers'
+    value_cols = [answer_col]
 
     # Total responses
     total_responses = len(df)
@@ -26,20 +33,16 @@ def analyze_q4(file_path: str):
     stats_df['cumulative_percent_contribution'] = stats_df['percent_contribution'].cumsum().round(2)
     investment_stats = stats_df.to_dict(orient='records')
     
-    # Calculate breakdown by demographic factors
-    demo_breakdowns = {}
-    for demo in demo_cols:
-        if demo in df.columns:
-            demo_stats = df.groupby([demo, answer_col]).size().unstack(fill_value=0)
-            demo_stats = (demo_stats.div(demo_stats.sum(axis=1), axis=0) * 100).round(2)
-            demo_breakdowns[demo] = demo_stats.to_dict()
 
     summary = {
-        'question_text': '4 Security Investment Trends',
+        'question_text': '4 How do you expect your API security investment to change in the next 12 months?',
         'total_responses': total_responses,
-        'investment_stats': investment_stats,
-        'demographic_breakdowns': demo_breakdowns
+        'main_stats': investment_stats,
     }
+    
+    # Add demographic analysis
+    summary = add_demographic_summary(summary, df, demo_cols, value_cols)
+    
     return summary
 
 if __name__ == "__main__":

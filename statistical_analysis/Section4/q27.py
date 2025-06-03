@@ -1,13 +1,24 @@
 import pandas as pd
 import json
 from pathlib import Path
+import sys
+import os
 import numpy as np
+
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 
 def analyze_q27(file_path: str):
     df = pd.read_excel(file_path)
+    # Clean column names
     df.columns = df.columns.str.strip()
     sub_questions = [col for col in df.columns if col.startswith('API') and ':' in col]
+    
+    # Identify relevant columns
+    id_col = 'ID'
     demo_cols = ['Country']
+    value_cols = sub_questions
 
     # Extract the initial question text (assume it's the same for all rows)
     question_text = df['Questions'].iloc[0] if 'Questions' in df.columns else None
@@ -47,22 +58,21 @@ def analyze_q27(file_path: str):
         for field in stats[k]:
             stats[k][field] = to_py_type(stats[k][field])
 
-    # Demographic breakdowns (optional)
-    demo_breakdowns = {}
-    for demo in demo_cols:
-        if demo in df.columns:
-            demo_breakdowns[demo] = {}
-            for val in df[demo].dropna().unique():
-                demo_df = df[df[demo] == val]
-                demo_breakdowns[demo][str(val)] = {
-                    col: {str(k): int(v) for k, v in demo_df[col].value_counts().sort_index().to_dict().items()} for col in sub_questions
-                }
+    # Calculate overall average across all sub_questions
+    all_means = [v['mean'] for v in stats.values()]
+    overall_average = round(np.mean(all_means), 2) if all_means else None
 
     summary = {
-        'question_text': question_text,
-        'sub_question_stats': stats,
-        'demographic_breakdowns': demo_breakdowns
+        'question_text': '27 How ready is your organization in mitigating these risks?',
+        'main_stats': {
+            'sub_question_stats': stats,
+            'overall_average': overall_average
+        }
     }
+    
+    # Add demographic analysis
+    summary = add_demographic_summary(summary, df, demo_cols, value_cols)
+    
     return summary
 
 if __name__ == "__main__":

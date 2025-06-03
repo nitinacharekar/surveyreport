@@ -4,119 +4,96 @@ Test script for country analysis functionality.
 
 import os
 import json
-import logging
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 import openai
-from statistical_analysis.Section1.section1_full_stats import get_section1_stats
-from statistical_analysis.Section2.section2_full_stats import get_section2_stats
-from statistical_analysis.Section3.section3_full_stats import get_section3_stats
-from statistical_analysis.Section4.section4_full_stats import get_section4_stats
 
 # Load environment variables
 load_dotenv()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('country_analysis.log')
-    ]
-)
-logger = logging.getLogger(__name__)
-
-# OpenAI Configuration
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 if not OPENAI_API_KEY:
-    raise ValueError("OPENAI_API_KEY not found in environment variables")
+    raise ValueError("OPENAI_API_KEY not found in .env file.")
 openai.api_key = OPENAI_API_KEY
 
-def openai_llm(prompt: str) -> str:
-    """Generate a response using OpenAI's GPT-4."""
-    logger.info(f"Generating response for prompt of length {len(prompt)}")
-    client = openai.OpenAI()
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+
+# Import section summary functions
+def import_section_stats_functions():
+    from statistical_analysis.Section1.section1_full_stats import get_section1_stats
+    from statistical_analysis.Section2.section2_full_stats import get_section2_stats
+    from statistical_analysis.Section3.section3_full_stats import get_section3_stats
+    from statistical_analysis.Section4.section4_full_stats import get_section4_stats
+    return [
+        ('Section1', get_section1_stats),
+        ('Section2', get_section2_stats),
+        ('Section3', get_section3_stats),
+        ('Section4', get_section4_stats),
+    ]
+
+section_stats_functions = import_section_stats_functions()
+
+# Aggregate demographic data by country from all sections
+def aggregate_demographic_by_country(all_section_stats):
+    country_data = {}
+    for section, section_stats in all_section_stats.items():
+        for qkey, summary in section_stats.items():
+            demo_summary = summary.get('demographic_analysis')
+            if not demo_summary:
+                continue
+            for country, data in demo_summary.items():
+                if country not in country_data:
+                    country_data[country] = {}
+                country_data[country][f'{section}_{qkey}'] = data
+    return country_data
+
+client = openai.OpenAI(api_key=OPENAI_API_KEY)
+
+def generate_insights_for_country(country, country_summary):
+    prompt = f"""
+You are an expert in API Security analysis. Based on the following demographic data for {country}, generate a concise insight (2-3 sentences) about API Security trends, strengths, or weaknesses for this country. Use the data to highlight any notable patterns or differences.
+
+Demographic Data:
+{json.dumps(country_summary, indent=2)}
+"""
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a helpful AI assistant that analyzes and summarizes data."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.7,
-        max_tokens=2000
+        messages=[{"role": "system", "content": "You are an expert API Security analyst."},
+                  {"role": "user", "content": prompt}],
+        max_tokens=300,
+        temperature=0.3
     )
-    logger.debug(f"Generated response: {response.choices[0].message.content[:100]}...")
-    return response.choices[0].message.content
+    return response.choices[0].message.content.strip()
 
-def process_single_country(country: str, country_data: list) -> tuple[str, str]:
-    """Process analysis for a single country."""
-    prompt = f"""You are a Country Analyst for {country}. Analyze the following country-specific data 
-    across all sections and questions in exactly 2 sentences maximum. Focus only on the most significant trend or insight.
-    Compare with overall trends where relevant. Be extremely concise.
-    
-    Country Data:
-    {json.dumps(country_data, indent=2)}"""
-    
-    return country, openai_llm(prompt)
+def load_section_stats():
+    all_section_stats = {}
+    for section, get_stats_func in section_stats_functions:
+        try:
+            section_stats = get_stats_func()
+            all_section_stats[section] = section_stats
+        except Exception as e:
+            print(f"Warning: Could not load stats for {section}: {e}")
+    return all_section_stats
 
-def process_country_analysis():
-    """Process country-specific analyses from all sections."""
-    logger.info("Processing country-specific analyses")
-    
-    # Get all section stats
-    all_stats = {
-        'section1': get_section1_stats(),
-        'section2': get_section2_stats(),
-        'section3': get_section3_stats(),
-        'section4': get_section4_stats()
-    }
-    
-    # Extract country data from each section
-    country_data = {}
-    for section, stats in all_stats.items():
-        for q_id, q_stats in stats.items():
-            if 'demographic_breakdowns' in q_stats and 'Country' in q_stats['demographic_breakdowns']:
-                for country_stats in q_stats['demographic_breakdowns']['Country']:
-                    country = country_stats['Country']
-                    if country not in country_data:
-                        country_data[country] = []
-                    country_data[country].append({
-                        'section': section,
-                        'question': q_id,
-                        'data': country_stats
-                    })
-    
-    # Process each country's data
-    country_analyses = {}
-    for country, data in country_data.items():
-        country, analysis = process_single_country(country, data)
-        country_analyses[country] = analysis
-        logger.debug(f"Completed country analysis: {country}")
-    
-    # Create combined country summary
-    country_summarizer_prompt = f"""You are a Country Analysis Moderator. Analyze the country-specific insights from all sections 
-    and identify key patterns, differences, and trends across countries in exactly 4 sentences maximum. 
-    Highlight any notable regional variations or country-specific challenges. Be extremely concise.
-    
-    Country Analyses:
-    {json.dumps(country_analyses, indent=2)}"""
-    
-    country_summary = openai_llm(country_summarizer_prompt)
-    
-    # Save results
-    results = {
-        "country_analyses": country_analyses,
-        "country_summary": country_summary
-    }
-    
-    output_path = 'output/country_analysis.json'
-    Path('output').mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w') as f:
-        json.dump(results, f, indent=2)
-    logger.info(f"Country analysis saved to {output_path}")
-    
-    return results
+def main():
+    # Test loading and print sample demographic summaries
+    all_section_stats = load_section_stats()
+    print("Aggregating by country...")
+    country_data = aggregate_demographic_by_country(all_section_stats)
+    print(f"Countries found: {list(country_data.keys())}")
+    insights = {}
+    print("Generating insights for each country...")
+    for country, summary in country_data.items():
+        print(f"Generating insight for {country}...")
+        insights[country] = generate_insights_for_country(country, summary)
+        print(f"Insight for {country}: {insights[country]}")
+    # Save insights to file
+    output_path = Path("output/country_insights.json")
+    output_path.parent.mkdir(exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(insights, f, indent=2)
+    print(f"Insights saved to {output_path}")
 
 if __name__ == "__main__":
-    process_country_analysis() 
+    main() 

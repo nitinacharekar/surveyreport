@@ -1135,3 +1135,20 @@
 2025-06-03 11:44:48,522 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 200 OK"
 2025-06-03 11:44:48,528 - INFO - Saving final report
 2025-06-03 11:44:48,530 - INFO - Final report saved to output/final_report.json
+2025-06-03 14:31:25,177 - INFO - Processing questions for section1 in parallel
+2025-06-03 14:31:25,366 - INFO - Initialized OpenAIAgent: section1_q1_agent
+2025-06-03 14:31:25,366 - INFO - Initialized OpenAIAgent: section1_q2_agent
+2025-06-03 14:31:25,366 - INFO - Initialized OpenAIAgent: section1_q3_agent
+2025-06-03 14:31:25,367 - INFO - Agent section1_q1_agent generating reply
+2025-06-03 14:31:25,367 - INFO - Initialized OpenAIAgent: section1_q4_agent
+2025-06-03 14:31:25,367 - INFO - Agent section1_q2_agent generating reply
+2025-06-03 14:31:25,367 - INFO - Agent section1_q3_agent generating reply
+2025-06-03 14:31:25,367 - INFO - Generating response for prompt of length 7040
+2025-06-03 14:31:25,368 - INFO - Agent section1_q4_agent generating reply
+2025-06-03 14:31:25,368 - INFO - Generating response for prompt of length 6995
+2025-06-03 14:31:25,368 - INFO - Generating response for prompt of length 5305
+2025-06-03 14:31:25,368 - INFO - Generating response for prompt of length 5548
+2025-06-03 14:31:25,841 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2025-06-03 14:31:25,954 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2025-06-03 14:31:26,281 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"
+2025-06-03 14:31:26,286 - INFO - HTTP Request: POST https://api.openai.com/v1/chat/completions "HTTP/1.1 401 Unauthorized"

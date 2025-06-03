@@ -1,6 +1,12 @@
 import pandas as pd
 import json
 from pathlib import Path
+import sys
+import os
+
+# Add the project root to Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 
 def analyze_q5(file_path: str):
     df = pd.read_excel(file_path)
@@ -17,6 +23,7 @@ def analyze_q5(file_path: str):
         'B2B marketplace APIs',
         'Mobile app backend APIs'
     ]
+    value_cols = api_cols
 
     # Total responses
     total_responses = len(df)
@@ -41,11 +48,17 @@ def analyze_q5(file_path: str):
     api_averages = {col: round(df[col].mean(), 2) for col in api_cols}
 
     summary = {
-        'question_text': '5 API Usage Classification- Business Purpose APIs',
+        'question_text': '5 How frequently does your organization use the following types of APIs?',
         'total_responses': total_responses,
-        'api_stats': api_stats,
-        'api_averages': api_averages
+        'main_stats': {
+            'api_stats': api_stats,
+            'api_averages': api_averages
+        }
     }
+    
+    # Add demographic analysis
+    summary = add_demographic_summary(summary, df, demo_cols, value_cols)
+    
     return summary
 
 if __name__ == "__main__":
