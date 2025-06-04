@@ -149,9 +149,7 @@ def process_single_question(section: str, q: str, stats: Dict[str, Any], state: 
     
     agent = OpenAIAgent(
         name=f"{section}_{q}_agent",
-        system_message=f"""You are an expert analyst for {section} - {q}. Write a concise data-grounded summary and analysis of the following statistics in 1-2 sentences maximum. 
-        Highlight only the most important trend or insight. Do not hallucinate and be extremely brief.
-        {feedback_prompt}"""
+        system_message=f"""You are an expert analyst for {section} - {q}. Provide a brief, reasoned analysis based on the data below. Only cite specific data points as evidence to support your claims. Do not simply restate the data. Focus on drawing insights, trends, or implications, and use the data only to support your reasoning. Be extremely concise (1-2 sentences).{feedback_prompt}"""
     )
     prompt = f"Statistics:\n{json.dumps(stats, indent=2)}"
     return q, agent.generate_reply([{'role': 'user', 'content': prompt}])
@@ -207,9 +205,7 @@ def process_section_summary(section: str, state: AgentState) -> AgentState:
     
     section_moderator = OpenAIAgent(
         name=f"{section}_moderator",
-        system_message=f"""You are a Section Moderator for {section}. Synthesize the following per-question summaries into exactly 4 sentences maximum. 
-        Focus on the most important cross-question patterns and key findings. Be extremely concise and avoid any redundancy.
-        {feedback_prompt}"""
+        system_message=f"""You are a Section Moderator for {section}. Synthesize the following per-question summaries into exactly 4 sentences maximum. Focus on the most important cross-question patterns and key findings. Provide a reasoned analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. Draw insights, trends, or implications, and use the data only to support your reasoning. Be extremely concise and avoid any redundancy.{feedback_prompt}"""
     )
     section_prompt = "\n\n".join(state[f'{section}_outputs'].values())
     state[f'{section}_summary'] = section_moderator.generate_reply([{'role': 'user', 'content': section_prompt}])
@@ -232,8 +228,7 @@ def process_combined_summary(state: AgentState) -> AgentState:
     
     combined_moderator = OpenAIAgent(
         name="combined_moderator",
-        system_message=f"""You are a Combined Analysis Moderator. Synthesize the following section summaries into exactly 4 sentences maximum. 
-        Focus only on the most significant cross-section patterns and key insights. Be extremely concise and avoid any redundancy.
+        system_message=f"""You are a combined analysis moderator. Analyze the following section summaries of responses to an API Security survey and provide an overall summary of global API Security trends, strengths, weaknesses, and unique characteristics. Don't focus on outputting the data, focus on the analysis and overall summary. 
         {feedback_prompt}"""
     )
     
@@ -250,94 +245,73 @@ def process_combined_summary(state: AgentState) -> AgentState:
 
 def process_country_analysis(state: AgentState) -> AgentState:
     """
-    Process country-specific analyses from all sections.
-    
-    Args:
-        state: Current workflow state
-        
-    Returns:
-        Updated state with country analyses
+    Aggregate demographic data by country from all section stats and generate OpenAI insights.
     """
-    logger.info("Processing country-specific analyses")
-    
-    # Get all section stats
-    all_stats = {
-        'section1': get_section1_stats(),
-        'section2': get_section2_stats(),
-        'section3': get_section3_stats(),
-        'section4': get_section4_stats()
-    }
-    
-    # Extract country data from each section
-    country_data = {}
-    for section, stats in all_stats.items():
-        for q_id, q_stats in stats.items():
-            if 'demographic_breakdowns' in q_stats and 'Country' in q_stats['demographic_breakdowns']:
-                for country_stats in q_stats['demographic_breakdowns']['Country']:
-                    country = country_stats['Country']
-                    if country not in country_data:
-                        country_data[country] = []
-                    country_data[country].append({
-                        'section': section,
-                        'question': q_id,
-                        'data': country_stats
-                    })
-    
-    # Process each country's data
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_country = {
-            executor.submit(process_single_country, country, data, state): country
-            for country, data in country_data.items()
-        }
-        for future in concurrent.futures.as_completed(future_to_country):
-            country, output = future.result()
-            state['country_analysis'][country] = output
-            logger.debug(f"Completed country analysis: {country}")
-    
-    # Create combined country summary
-    country_summarizer = OpenAIAgent(
-        name="country_summarizer",
-        system_message="""You are a Country Analysis Moderator. Analyze the country-specific insights from all sections 
-        and identify key patterns, differences, and trends across countries. Highlight any notable regional variations 
-        or country-specific challenges. Do not hallucinate and only output the summary and analysis."""
-    )
-    
-    country_prompt = "\n\n".join([f"{country}:\n{analysis}" for country, analysis in state['country_analysis'].items()])
-    state['country_summary'] = country_summarizer.generate_reply([{'role': 'user', 'content': country_prompt}])
-    
-    return state
+    logger.info("Processing country analysis node...")
 
-def process_single_country(country: str, country_data: List[Dict], state: AgentState) -> Tuple[str, str]:
-    """
-    Process analysis for a single country.
-    
-    Args:
-        country: Country name
-        country_data: List of question data for the country
-        state: Current workflow state
-        
-    Returns:
-        Tuple of (country, analysis)
-    """
-    agent = OpenAIAgent(
-        name=f"{country}_analyst",
-        system_message=f"""You are a Country Analyst for {country}. Analyze the following country-specific data 
-        across all sections and questions in exactly 2 sentences maximum. Focus only on the most significant trend or insight.
-        Compare with overall trends where relevant. Be extremely concise."""
-    )
-    
-    prompt = f"Country Data:\n{json.dumps(country_data, indent=2)}"
-    return country, agent.generate_reply([{'role': 'user', 'content': prompt}])
+    # Load all section stats
+    all_section_stats = {
+        'Section1': get_section1_stats(),
+        'Section2': get_section2_stats(),
+        'Section3': get_section3_stats(),
+        'Section4': get_section4_stats(),
+    }
+
+    # Aggregate by country using improved logic
+    country_data = {}
+    for section, section_stats in all_section_stats.items():
+        for qkey, summary in section_stats.items():
+            demo_summary = summary.get('demographic_analysis')
+            if not demo_summary:
+                continue
+            total_responses_by_demo = demo_summary.get('total_responses_by_demo', {})
+            for demo_col, country_counts in total_responses_by_demo.items():
+                for country, count in country_counts.items():
+                    if country not in country_data:
+                        country_data[country] = {}
+                    country_data[country][f'{section}_{qkey}'] = {
+                        'total_responses': count,
+                        'question_text': demo_summary.get('question_text'),
+                        # Add more fields if needed from demo_summary['statistics']
+                    }
+    logger.info(f"Countries found: {list(country_data.keys())}")
+
+    # Generate insights for each country using OpenAI
+    insights = {}
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
+    for country, summary in country_data.items():
+        logger.info(f"Generating insight for {country}...")
+        prompt = f"""
+You are an expert in API Security analysis. Based on the following demographic and statistical data for {country}, provide a detailed, data-driven analysis of API Security trends, strengths, weaknesses, and unique characteristics for this country. 
+
+- Highlight what makes this country stand out compared to other countries.
+- Identify any outliers, surprising results, or unique patterns in the data.
+- Use specific data points as evidence for your claims (percentages, counts, averages, etc.).
+- Avoid generic statements; focus on what is truly unique or notable for this country.
+- Do not use information that does not exist in the data.
+
+Demographic and Statistical Data:
+{json.dumps(summary, indent=2)}
+"""
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are an expert API Security analyst."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=300,
+            temperature=0.3
+        )
+        insights[country] = response.choices[0].message.content.strip()
+        logger.info(f"Insight for {country}: {insights[country]}")
+
+    # Store in state
+    state['country_analysis'] = insights
+    return state
 
 def process_personas(state: AgentState) -> AgentState:
     """
-    Process persona analyses in parallel.
-    
-    Args:
-        state: Current workflow state
-        
-    Returns:
-        Updated state with persona analyses
+    Process persona analyses in parallel, using both the combined summary and country demographic data.
     """
     logger.info("Processing personas in parallel")
     personas = [
@@ -345,36 +319,32 @@ def process_personas(state: AgentState) -> AgentState:
         ("Business Customer", "You are a business customer. Interpret these section insights from your perspective. What stands out? What actions or concerns would you have?"),
         ("F5 Vendor", "You are F5 Networks, the vendor. Interpret these section insights from your perspective. What stands out? What actions or concerns would you have?")
     ]
-    
+    country_data = state.get('country_analysis', {})
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_to_persona = {
-            executor.submit(process_single_persona, persona_name, persona_msg, state['combined_summary']): persona_name
+            executor.submit(process_single_persona, persona_name, persona_msg, state['combined_summary'], country_data): persona_name
             for persona_name, persona_msg in personas
         }
         for future in concurrent.futures.as_completed(future_to_persona):
             persona_name, output = future.result()
             state['persona_outputs'][persona_name] = output
             logger.debug(f"Completed persona: {persona_name}")
-    
     return state
 
-def process_single_persona(persona_name: str, persona_msg: str, combined_summary: str) -> Tuple[str, str]:
+def process_single_persona(persona_name: str, persona_msg: str, combined_summary: str, country_data: dict) -> Tuple[str, str]:
     """
-    Process a single persona analysis.
-    
-    Args:
-        persona_name: Name of the persona
-        persona_msg: System message for the persona
-        combined_summary: Current combined summary
-        
-    Returns:
-        Tuple of (persona_name, analysis)
+    Process a single persona analysis, including demographic/country data in the prompt.
     """
+    prompt = (
+        f"{combined_summary}\n\n"
+        f"Here is detailed demographic and country-specific data:\n"
+        f"{json.dumps(country_data, indent=2)}"
+    )
     agent = OpenAIAgent(
         name=f"{persona_name}_agent",
-        system_message=f"{persona_msg} Provide your interpretation in exactly 2 sentences maximum. Be extremely concise."
+        system_message=f"{persona_msg} Provide your interpretation in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. Be extremely concise."
     )
-    return persona_name, agent.generate_reply([{'role': 'user', 'content': combined_summary}])
+    return persona_name, agent.generate_reply([{'role': 'user', 'content': prompt}])
 
 def validate_output(state: AgentState) -> AgentState:
     """
@@ -389,9 +359,7 @@ def validate_output(state: AgentState) -> AgentState:
     logger.info(f"Validation attempt {state['current_attempt'] + 1}")
     validation_agent = OpenAIAgent(
         name="validation_agent",
-        system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. 
-        Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. If you find issues, specify which sections need to be rerun.
-        If all is well, include the word 'APPROVED' in your response. Be extremely concise."""
+        system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. If you find issues, specify which sections need to be rerun. If all is well, include the word 'APPROVED' in your response."""
     )
     
     all_stats = {
@@ -446,30 +414,47 @@ def increment_attempt(state: AgentState) -> AgentState:
 
 def save_final_report(state: AgentState) -> AgentState:
     """
-    Save the final report to a JSON file.
+    Save the final report to a JSON file and a text file.
     
     Args:
         state: Current workflow state
         
     Returns:
-        Unchanged state
+        Updated state
     """
     logger.info("Saving final report")
-    final_report = {
-        "section_summaries": {
-            f"section{i}": state[f'section{i}_summary'] for i in range(1, 5)
+    
+    # Save JSON report
+    report = {
+        'section_summaries': {
+            'section1': state['section1_summary'],
+            'section2': state['section2_summary'],
+            'section3': state['section3_summary'],
+            'section4': state['section4_summary']
         },
-        "combined_summary": state['combined_summary'],
-        "country_analysis": state['country_analysis'],
-        "country_summary": state['country_summary'],
-        "personas": state['persona_outputs'],
-        "validation": state['validation']
+        'combined_summary': state['combined_summary'],
+        'country_analysis': state['country_analysis'],
+        'country_summary': state['country_summary'],
+        'persona_outputs': state['persona_outputs']
     }
-    output_path = 'output/final_report.json'
-    Path('output').mkdir(parents=True, exist_ok=True)
-    with open(output_path, 'w') as f:
-        json.dump(final_report, f, indent=2)
-    logger.info(f"Final report saved to {output_path}")
+    
+    with open('output/final_report.json', 'w') as f:
+        json.dump(report, f, indent=2)
+    
+    # Save text report
+    with open('output/final_report3.md', 'w') as f:
+        f.write("=== Final Report ===\n\n")
+
+        f.write("--- Overall Summary ---\n")
+        f.write(f"{report['combined_summary']}\n\n")
+        
+        f.write("--- Section Summaries ---\n")
+        for section, summary in report['section_summaries'].items():
+            f.write(f"{section}:\n{summary}\n\n")
+    
+        f.write("--- Country Analysis ---\n")
+        for country, analysis in report['country_analysis'].items():
+            f.write(f"{country}:\n{analysis}\n\n")
     return state
 
 def main():
@@ -511,7 +496,7 @@ def main():
     
     # Add other nodes
     workflow.add_node("process_combined", process_combined_summary)
-    # workflow.add_node("process_country", process_country_analysis)  # Commented out country analysis
+    workflow.add_node("process_country", process_country_analysis)
     workflow.add_node("process_personas", process_personas)
     workflow.add_node("validate_output", validate_output)
     workflow.add_node("increment_attempt", increment_attempt)
@@ -531,7 +516,8 @@ def main():
     
     # Add edges for combined analysis and country analysis
     workflow.add_edge("summarize_section4", "process_combined")
-    workflow.add_edge("process_combined", "process_personas")  # Skip country analysis
+    workflow.add_edge("process_combined", "process_country")
+    workflow.add_edge("process_country", "process_personas")
     workflow.add_edge("process_personas", "validate_output")
     workflow.add_edge("validate_output", "increment_attempt")
     

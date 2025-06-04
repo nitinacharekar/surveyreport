@@ -30,6 +30,7 @@ from typing import Dict, List, Tuple, Any, Optional, TypedDict
 from dataclasses import dataclass
 from langgraph.graph import StateGraph, START, END
 from dotenv import load_dotenv
+from typing_extensions import Annotated
 
 # Load environment variables
 load_dotenv()
@@ -112,10 +113,10 @@ class AgentState(TypedDict):
     Type definition for the agent state.
     Tracks all necessary information throughout the workflow.
     """
-    section1_outputs: Dict[str, str]  # Section 1 question analyses
-    section2_outputs: Dict[str, str]  # Section 2 question analyses
-    section3_outputs: Dict[str, str]  # Section 3 question analyses
-    section4_outputs: Dict[str, str]  # Section 4 question analyses
+    section1_outputs: Annotated[Dict[str, str], "accumulate"]  # Section 1 question analyses
+    section2_outputs: Annotated[Dict[str, str], "accumulate"]  # Section 2 question analyses
+    section3_outputs: Annotated[Dict[str, str], "accumulate"]  # Section 3 question analyses
+    section4_outputs: Annotated[Dict[str, str], "accumulate"]  # Section 4 question analyses
     section1_summary: str             # Section 1 summary
     section2_summary: str             # Section 2 summary
     section3_summary: str             # Section 3 summary
@@ -156,35 +157,20 @@ def process_single_question(section: str, q: str, stats: Dict[str, Any], state: 
 
 def process_section_questions(section: str, state: AgentState) -> AgentState:
     """
-    Process all questions for a specific section in parallel.
-    
-    Args:
-        section: Section identifier
-        state: Current workflow state
-        
-    Returns:
-        Updated state with section question analyses
+    Process all questions for a specific section sequentially.
     """
-    logger.info(f"Processing questions for {section} in parallel")
-    
-    # Get section stats
+    logger.info(f"Processing questions for {section} sequentially")
     section_stats = {
         'section1': get_section1_stats,
         'section2': get_section2_stats,
         'section3': get_section3_stats,
         'section4': get_section4_stats
     }[section]()
-    
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_question = {
-            executor.submit(process_single_question, section, q, stats, state): q 
-            for q, stats in section_stats.items()
-        }
-        for future in concurrent.futures.as_completed(future_to_question):
-            q, output = future.result()
-            state[f'{section}_outputs'][q] = output
-            logger.debug(f"Completed {section} question: {q}")
-    
+    outputs = {}
+    for q, stats in section_stats.items():
+        qid, output = process_single_question(section, q, stats, state)
+        outputs[qid] = output
+    state[f'{section}_outputs'] = outputs
     return state
 
 def process_section_summary(section: str, state: AgentState) -> AgentState:
@@ -304,13 +290,7 @@ Demographic Data:
 
 def process_personas(state: AgentState) -> AgentState:
     """
-    Process persona analyses in parallel.
-    
-    Args:
-        state: Current workflow state
-        
-    Returns:
-        Updated state with persona analyses
+    Process persona analyses in parallel, using both the combined summary and country demographic data.
     """
     logger.info("Processing personas in parallel")
     personas = [
@@ -318,36 +298,32 @@ def process_personas(state: AgentState) -> AgentState:
         ("Business Customer", "You are a business customer. Interpret these section insights from your perspective. What stands out? What actions or concerns would you have?"),
         ("F5 Vendor", "You are F5 Networks, the vendor. Interpret these section insights from your perspective. What stands out? What actions or concerns would you have?")
     ]
-    
+    country_data = state.get('country_analysis', {})
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_to_persona = {
-            executor.submit(process_single_persona, persona_name, persona_msg, state['combined_summary']): persona_name
+            executor.submit(process_single_persona, persona_name, persona_msg, state['combined_summary'], country_data): persona_name
             for persona_name, persona_msg in personas
         }
         for future in concurrent.futures.as_completed(future_to_persona):
             persona_name, output = future.result()
             state['persona_outputs'][persona_name] = output
             logger.debug(f"Completed persona: {persona_name}")
-    
     return state
 
-def process_single_persona(persona_name: str, persona_msg: str, combined_summary: str) -> Tuple[str, str]:
+def process_single_persona(persona_name: str, persona_msg: str, combined_summary: str, country_data: dict) -> Tuple[str, str]:
     """
-    Process a single persona analysis.
-    
-    Args:
-        persona_name: Name of the persona
-        persona_msg: System message for the persona
-        combined_summary: Current combined summary
-        
-    Returns:
-        Tuple of (persona_name, analysis)
+    Process a single persona analysis, including demographic/country data in the prompt.
     """
+    prompt = (
+        f"{combined_summary}\n\n"
+        f"Here is detailed demographic and country-specific data:\n"
+        f"{json.dumps(country_data, indent=2)}"
+    )
     agent = OpenAIAgent(
         name=f"{persona_name}_agent",
         system_message=f"{persona_msg} Provide your interpretation in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. Be extremely concise."
     )
-    return persona_name, agent.generate_reply([{'role': 'user', 'content': combined_summary}])
+    return persona_name, agent.generate_reply([{'role': 'user', 'content': prompt}])
 
 def validate_output(state: AgentState) -> AgentState:
     """
@@ -464,6 +440,10 @@ def save_final_report(state: AgentState) -> AgentState:
     
     return state
 
+def join_summaries(state: AgentState) -> AgentState:
+    # Synchronization point; all section summaries should be in state
+    return state
+
 def main():
     """
     Main function to set up and run the workflow.
@@ -501,7 +481,22 @@ def main():
         workflow.add_node(f"process_{section}", lambda s, sec=section: process_section_questions(sec, s))
         workflow.add_node(f"summarize_{section}", lambda s, sec=section: process_section_summary(sec, s))
     
-    # Add other nodes
+    # Add parallel edges from START to each section processor
+    workflow.add_edge(START, "process_section1")
+    workflow.add_edge(START, "process_section2")
+    workflow.add_edge(START, "process_section3")
+    workflow.add_edge(START, "process_section4")
+    
+    # Chain each section's processing to its summarization
+    for section in ['section1', 'section2', 'section3', 'section4']:
+        workflow.add_edge(f"process_{section}", f"summarize_{section}")
+    
+    # Add a join node that waits for all summarize_sectionX nodes
+    workflow.add_node("join_summaries", join_summaries)
+    for section in ['section1', 'section2', 'section3', 'section4']:
+        workflow.add_edge(f"summarize_{section}", "join_summaries")
+    
+    # After join, continue as before
     workflow.add_node("process_combined", process_combined_summary)
     workflow.add_node("process_country", process_country_analysis)
     workflow.add_node("process_personas", process_personas)
@@ -509,26 +504,11 @@ def main():
     workflow.add_node("increment_attempt", increment_attempt)
     workflow.add_node("save_report", save_final_report)
     
-    # Add edges from START to each section
-    workflow.add_edge(START, "process_section1")
-    
-    # Add edges between section nodes
-    workflow.add_edge("process_section1", "summarize_section1")
-    workflow.add_edge("summarize_section1", "process_section2")
-    workflow.add_edge("process_section2", "summarize_section2")
-    workflow.add_edge("summarize_section2", "process_section3")
-    workflow.add_edge("process_section3", "summarize_section3")
-    workflow.add_edge("summarize_section3", "process_section4")
-    workflow.add_edge("process_section4", "summarize_section4")
-    
-    # Add edges for combined analysis and country analysis
-    workflow.add_edge("summarize_section4", "process_combined")
+    workflow.add_edge("join_summaries", "process_combined")
     workflow.add_edge("process_combined", "process_country")
     workflow.add_edge("process_country", "process_personas")
     workflow.add_edge("process_personas", "validate_output")
     workflow.add_edge("validate_output", "increment_attempt")
-    
-    # Add conditional edges from increment
     workflow.add_conditional_edges(
         "increment_attempt",
         should_continue,
@@ -536,8 +516,6 @@ def main():
             "end": "save_report"  # Only end option now
         }
     )
-    
-    # Add final edge
     workflow.add_edge("save_report", END)
     
     # Compile and run graph
