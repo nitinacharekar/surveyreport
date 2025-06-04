@@ -1,566 +1,611 @@
 === Final Report ===
 
---- Section Summaries ---
-section1:
-### Summary of API Security Surveys
+--- Overall Summary ---
+### Comprehensive Summary of API Security and Usage Insights
 
-#### API Security Responsibility Survey
-**Overview**: The survey engaged 1,000 organizations to identify the primary responsibility for API security.
+#### Section 1: API Security Investment and Responsibility Insights
 
-**Main Findings**:
-1. **Top Roles**:
-   - **Security Operations**: 26.4% (264 responses)
-   - **Dedicated API Security Team**: 22.3% (223 responses)
-   - **Development Teams**: 18.9% (189 responses)
-   - **Cloud Security Team**: 18.0% (180 responses)
-   - **Digital Transformation Team**: 14.4% (144 responses)
+**Survey Overview:**
+The survey involved 1,000 participants examining trends in API security investments, responsibilities, and the importance of API security across various regions.
 
-2. **Concentration of Responsibility**: The top four roles account for 85.6% of responses, indicating a strong centralization of API security responsibilities.
+**Investment Expectations:**
+- A significant majority (55.7%) expect a moderate investment increase (10-25%).
+- 84.7% foresee either moderate or minimal changes in investment.
+- Only 1.8% anticipate a decrease, indicating optimism for future funding.
+- Regional variations show higher investment expectations in China and Indonesia, while Japan exhibits caution.
 
-**Demographics**: The responses were distributed across various countries, with ANZ providing the largest segment (200 responses).
+**API Security Responsibility:**
+- Responsibility predominantly lies with Security Operations (26.4%) and Dedicated API Security Teams (22.3%).
+- Development Teams account for 18.9% of responsibilities.
+- Indonesia shows strong representation for a Dedicated API Security Team.
 
-**Country-Specific Insights**:
-- **Cloud Security**: Most prevalent in ANZ (26.5%) and Korea (22.0%).
-- **Dedicated API Security Team**: Notably significant in Indonesia (51.0%) and India (27.0%).
-- **Development Teams**: Strong presence in ANZ (22.0%) and India (24.0%).
-- **Security Operations**: Dominant in Japan (39.0%) and ANZ (27.0%).
+**Importance of API Security:**
+- API security is rated highly important, especially regarding business impact (average rating 3.62).
+- India and Taiwan emphasize business impact the most, while Japan ranks lower.
 
-**Conclusion**: The survey reveals varied responsibilities for API security, with notable regional differences, particularly in Indonesia, where the Dedicated API Security Team is most prominent.
+**API Security Capabilities:**
+- Maturity scores indicate average technical expertise (3.32) and tool/process maturity (3.14/3.15).
+- India and Indonesia lead in maturity ratings, whereas Japan scores the lowest.
 
----
+### Section 2: API Usage and Deployment Models
 
-#### API Security Importance Survey
-**Question**: Importance of API security for organizations in the next 12 months.
+**Overall API Usage:**
+- REST APIs are the most frequently used (average frequency 2.8), followed closely by GraphQL APIs (2.72).
+- Moderate to high usage patterns are consistent across most API types.
 
-**Overall Response Statistics**:
-- **Total Responses**: 1,000
-- **Average Importance Rating**: 3.62/5
-- **High Concern**: 62.9% rated it 4 or 5, indicating strong prioritization of API security.
+**Demographic Analysis:**
+- India showcases the highest usage frequencies for REST, GraphQL, and Event-driven APIs, while Japan records the lowest.
 
-**Key Insights**:
-- **Business Impact**: Average Rating: 3.62
-- **Digital Transformation Priority**: Average Rating: 3.53
-- **Regulatory Compliance**: Average Rating: 3.56
+**Deployment Models for AI/ML APIs:**
+- On-premises deployment is favored for Computer Vision APIs (46.8%) and Custom ML Models (41.0%).
+- The trend towards hybrid deployments indicates flexibility in API strategies.
 
-**Demographic Analysis**:
-- **Mean Ratings by Country**:
-  - **Business Impact**: Taiwan (4.05) and India (3.97) rated highest.
-  - **Digital Transformation**: Indonesia (3.97) and India (3.77) led the ratings.
-  - **Regulatory Compliance**: Taiwan (4.08) scored highest.
+### Section 3: Findings on API Security and Compliance
 
-**Conclusion**: There is a strong consensus on the importance of API security, with countries like Taiwan and India emphasizing its critical role in business strategies.
+**API Access Control Effectiveness:**
+- Standard methods like OAuth/OIDC rated most effective (average 3.12).
+- Effectiveness varies regionally, with India scoring higher than Japan.
 
----
+**API Runtime Protection Challenges:**
+- Concerns about data leakage (3.39) and API security attacks (3.34) are significant.
 
-#### API Security Maturity Survey
-**Objective**: To assess the maturity of organizations' API security capabilities based on technical expertise, tool maturity, and process maturity.
+**Regulatory Compliance Concerns:**
+- Compliance solutions rated moderately effective, with data residency and privacy law compliance receiving close attention.
 
-**Overall Maturity Scores**:
-1. **Technical Expertise**: Average Score: 3.32
-2. **Tool Maturity**: Average Score: 3.14
-3. **Process Maturity**: Average Score: 3.15
+**API Discovery Challenges:**
+- Concerns about shadow APIs (3.03) and compliance identification challenges are prevalent.
 
-**Demographic Analysis**:
-- **Country-Specific Maturity Scores**:
-  - **Technical Expertise**: Highest in Indonesia (3.84), lowest in Japan (2.56).
-  - **Tool Maturity**: Highest in Indonesia (3.63), lowest in Japan (2.32).
-  - **Process Maturity**: Highest in Indonesia (3.81), lowest in Japan (2.24).
+### Section 4: API Security Measures and Organizational Readiness
 
-**Conclusion**: Organizations report moderate maturity in API security, with Indonesia displaying higher capabilities compared to Japan, indicating regional disparities in maturity levels.
+**API Security Measures:**
+- Web Application Firewalls are the most widely adopted security measure (16.81%).
+- Identity & Access Management Solutions (13.77%) follow closely.
 
----
+**OWASP API Security Risks:**
+- The top risks include unrestricted access to sensitive business flows (13.22%) and security misconfiguration (12.87%).
 
-#### API Security Investment Expectations Survey
-**Overall Results**:
-- **Total Responses**: 1,000
-- **Investment Expectations**:
-  - **Moderate Increase (10-25%)**: 55.7%
-  - **Minimal Change**: 29.0%
-  - **Significant Increase (>25%)**: 13.5%
-  - **Decrease**: 1.8%
-
-**Country Breakdown**:
-- **Moderate Increase**: Predominantly expected in India (62%), China (66%), and Taiwan (60%).
-- **Minimal Change**: Most common in Japan (37%).
-
-**Conclusion**: There is a strong expectation for increased investment in API security, especially in regions like ANZ, India, and China, reflecting growing awareness and prioritization of API security measures across organizations. 
-
---- 
-
-These surveys collectively highlight the critical role of API security in organizations, revealing responsibilities, importance, maturity levels, and investment expectations that are shaping the landscape of API management and protection.
-
-section2:
-### Summary of API Usage Statistics
-
-#### Overall Usage Statistics
-The survey gathered responses from **1,000 organizations** regarding their API usage across five categories:
-
-1. **Customer-facing Public APIs**
-   - **Responses**: 
-     - 0: 45 (4.5%)
-     - 1: 79 (7.9%)
-     - 2: 186 (18.6%)
-     - 3: 379 (37.9%)
-     - 4: 223 (22.3%)
-     - 5: 88 (8.8%)
-   - **Average Usage**: **2.92**
-
-2. **Partner Integration APIs**
-   - **Responses**: 
-     - 0: 39 (3.9%)
-     - 1: 84 (8.4%)
-     - 2: 243 (24.3%)
-     - 3: 325 (32.5%)
-     - 4: 228 (22.8%)
-     - 5: 81 (8.1%)
-   - **Average Usage**: **2.86**
-
-3. **Internal System APIs**
-   - **Responses**: 
-     - 0: 36 (3.6%)
-     - 1: 64 (6.4%)
-     - 2: 181 (18.1%)
-     - 3: 323 (32.3%)
-     - 4: 250 (25.0%)
-     - 5: 146 (14.6%)
-   - **Average Usage**: **3.12**
-
-4. **B2B Marketplace APIs**
-   - **Responses**: 
-     - 0: 58 (5.8%)
-     - 1: 102 (10.2%)
-     - 2: 211 (21.1%)
-     - 3: 310 (31.0%)
-     - 4: 227 (22.7%)
-     - 5: 92 (9.2%)
-   - **Average Usage**: **2.82**
-
-5. **Mobile App Backend APIs**
-   - **Responses**: 
-     - 0: 54 (5.4%)
-     - 1: 93 (9.3%)
-     - 2: 186 (18.6%)
-     - 3: 311 (31.1%)
-     - 4: 239 (23.9%)
-     - 5: 117 (11.7%)
-   - **Average Usage**: **2.94**
-
-### Demographic Analysis
-Responses were categorized by country:
-
-- **ANZ**: 200
-- **India**: 100
-- **China**: 100
-- **Taiwan**: 100
-- **Japan**: 100
-- **Indonesia**: 100
-- **Korea, Republic Of**: 100
-- **Singapore**: 100
-- **Malaysia**: 100
-
-#### Mean Usage by Country for Each API Type
-- **Customer-facing Public APIs**: Highest in Indonesia (3.49) and lowest in Japan (2.14).
-- **Partner Integration APIs**: Highest in India (3.31) and lowest in Japan (1.95).
-- **Internal System APIs**: Highest in Indonesia (3.73) and lowest in Japan (2.23).
-- **B2B Marketplace APIs**: Highest in India (3.28) and lowest in Japan (2.06).
-- **Mobile App Backend APIs**: Highest in Indonesia (3.50) and lowest in Japan (2.00).
+**Organizational Readiness:**
+- The overall readiness to mitigate risks scores an average of 2.97.
+- Regional disparities exist, with Indonesia showing higher preparedness compared to Japan.
 
 ### Conclusion
-- **Internal System APIs** have the highest average usage (3.12), while **B2B Marketplace APIs** have the lowest (2.82).
-- **India** and **Indonesia** show higher API usage, while **Japan** consistently displays the lowest frequencies, suggesting potential growth areas for API adoption.
+The analysis indicates a robust investment outlook in API security, with varying responsibilities and maturity levels across regions. API usage trends favor REST and GraphQL, with significant adoption of on-premises and hybrid deployment models for AI/ML APIs. However, challenges remain in areas like access control effectiveness, regulatory compliance, and organizational readiness to address API security risks. Targeted strategies are essential for improvement, particularly in regions exhibiting lower effectiveness and readiness levels.
+
+--- Section Summaries ---
+section1:
+### Summary of API Security Investment and Responsibility Insights
+
+**Survey Overview:**
+The survey collected data from 1,000 participants regarding API security investments, responsibilities, and the perceived importance of API security across various regions. The findings highlight trends in investment expectations, responsibility allocation, and the significance placed on API security.
+
+#### Investment Expectations
+
+1. **Investment Changes**:
+   - **Moderate Increase (10-25%)**: 55.7% (557 respondents) expect this level of investment.
+   - **Minimal Change (-10% to +10%)**: 29.0% (290 respondents) foresee little change.
+   - **Significant Increase (>25%)**: 13.5% (135 respondents) anticipate a large boost.
+   - **Decrease**: Just 1.8% (18 respondents) expect a reduction in investment.
+
+2. **Cumulative Insights**:
+   - **84.7%** of respondents anticipate either a moderate or minimal change.
+   - Only **1.8%** foresee a decrease in API security investment, indicating a generally positive outlook.
+
+3. **Regional Variations**:
+   - Countries like **China** and **Indonesia** show higher expectations for moderate increases.
+   - **Japan** has a more cautious perspective, with a notable percentage expecting minimal or decreased investments.
+
+---
+
+#### API Security Responsibility
+
+1. **Responsibility Distribution**:
+   - **Security Operations**: 26.4% (264 responses) are seen as the primary team.
+   - **Dedicated API Security Team**: 22.3% (223 responses).
+   - **Development Teams**: 18.9% (189 responses).
+   - Other teams (Cloud Security, Digital Transformation) account for the remaining percentage.
+
+2. **Cumulative Contributions**:
+   - The top three categories (Security Operations, Dedicated API Security Team, Development Teams) together comprise **59.2%** of responses, reflecting a strong emphasis on security operations.
+
+3. **Regional Insights**:
+   - **Indonesia** leads with a significant representation for a Dedicated API Security Team (51 responses).
+   - **ANZ** shows strong engagement with both Security Operations and Cloud Security responsibilities.
+
+---
+
+#### Importance of API Security
+
+1. **Key Areas of Assessment**:
+   - **Business Impact**: Average rating of **3.62**; 62.9% rated it a 4 or 5, indicating high importance.
+   - **Digital Transformation Priority**: Average rating of **3.53**; 58.9% rated it a 4 or 5.
+   - **Regulatory Compliance**: Average rating of **3.56**; 58.5% rated it a 4 or 5.
+
+2. **Demographic Analysis**:
+   - **India** and **Taiwan** emerged as countries placing the highest emphasis on business impact, with mean ratings of **3.97** and **4.05**, respectively.
+   - **Japan** consistently ranked lower across all categories, indicating a less critical view of API security.
+
+---
+
+#### API Security Capabilities
+
+1. **Maturity Scores**:
+   - **Technical Expertise**: Average score of **3.32**.
+   - **Tool Maturity**: Average score of **3.14**.
+   - **Process Maturity**: Average score of **3.15**.
+
+2. **Country-Specific Insights**:
+   - **India** and **Indonesia** score the highest across all maturity categories.
+   - **Japan** shows the lowest scores, particularly in technical and process maturity.
+
+---
+
+### Conclusion
+The survey highlights a robust and optimistic outlook for API security investments, with most organizations expecting increases in funding. The responsibility for API security primarily rests with Security Operations and dedicated teams, with noticeable regional variations in emphasis and maturity levels. Overall, API security is rated as highly important, particularly in terms of business impact and regulatory compliance, with significant regional differences influencing perceptions and capabilities.
+
+section2:
+### Summary of API Usage and Deployment Models
+
+#### Overall API Usage
+- **Total Responses:** 1000
+- **API Types Analyzed:** REST APIs, GraphQL APIs, gRPC/RPC APIs, Event-driven APIs, Streaming APIs.
+
+#### Frequency of API Usage (Scale 0 to 5)
+1. **REST APIs:**
+   - **Most Frequent:** 33.6% (336 responses at value 3)
+   - **Average Frequency:** 2.8
+
+2. **GraphQL APIs:**
+   - **Most Frequent:** 29.5% (295 responses at value 3)
+   - **Average Frequency:** 2.72
+
+3. **gRPC/RPC APIs:**
+   - **Most Frequent:** 28.7% (287 responses at value 3)
+   - **Average Frequency:** 2.59
+
+4. **Event-driven APIs:**
+   - **Most Frequent:** 28.8% (288 responses at value 3)
+   - **Average Frequency:** 2.75
+
+5. **Streaming APIs:**
+   - **Most Frequent:** 28.4% (284 responses at value 3)
+   - **Average Frequency:** 2.79
+
+#### Cumulative Percent Contribution
+- Most API usage falls within middle values (2 and 3), indicating moderate to high frequency use, particularly for REST and GraphQL APIs.
+
+### Demographic Analysis
+- **Countries Represented:** ANZ, India, China, Taiwan, Japan, Indonesia, Korea, Singapore, Malaysia.
+  
+#### Mean Frequency of API Usage by Country (Selected API Types)
+1. **REST APIs:**
+   - **Highest Mean:** India (3.37)
+   - **Lowest Mean:** Japan (1.88)
+
+2. **GraphQL APIs:**
+   - **Highest Mean:** India (3.35)
+   - **Lowest Mean:** Japan (1.64)
+
+3. **gRPC/RPC APIs:**
+   - **Highest Mean:** Indonesia (3.43)
+   - **Lowest Mean:** Japan (1.49)
+
+4. **Event-driven APIs:**
+   - **Highest Mean:** India (3.27)
+   - **Lowest Mean:** Japan (1.73)
+
+5. **Streaming APIs:**
+   - **Highest Mean:** Indonesia (3.51)
+   - **Lowest Mean:** Japan (1.61)
+
+### Standard Deviation of API Usage by Country
+- Higher standard deviation values indicate more diverse usage patterns within countries.
+
+### Conclusion
+Organizations demonstrate a strong preference for moderate to high usage of various API types, especially REST and GraphQL APIs. India shows the highest frequency of usage, while Japan reports the lowest. This insight can assist organizations in tailoring their API strategies based on geographic preferences.
+
+---
+
+### Overview of Deployment Models for AI/ML APIs
+1. **Large Language Models (LLMs):**
+   - **On-premises only:** 39.3%
+   - **Hybrid deployment:** 38.7%
+   - **Cloud-hosted only:** 22.0%
+
+2. **Computer Vision APIs:**
+   - **On-premises only:** 46.8%
+   - **Hybrid deployment:** 29.7%
+   - **Cloud-hosted only:** 23.5%
+
+3. **Custom ML Models:**
+   - **On-premises only:** 41.0%
+   - **Hybrid deployment:** 31.8%
+   - **Cloud-hosted only:** 27.2%
+
+### Key Insights
+- **On-premises deployment** is preferred for Computer Vision APIs (46.8%) and Custom ML Models (41.0%).
+- **Hybrid deployment** is popular across all categories, especially for Custom ML Models (31.8%).
+
+### Demographic Analysis
+Responses were collected from various countries, with notable trends:
+
+#### Large Language Models (LLMs):
+- **On-premises only:** Highest in ANZ (101).
+- **Hybrid deployment:** Highest in Indonesia (66).
+- **Cloud-hosted only:** Highest in ANZ (48).
+
+#### Computer Vision APIs:
+- **On-premises only:** Highest in ANZ (99) and India (56).
+- **Hybrid deployment:** Highest in ANZ (53).
+
+#### Custom ML Models:
+- **On-premises only:** Highest in ANZ (93) and Malaysia (42).
+
+### Conclusion
+There is a strong preference for on-premises deployment for Computer Vision APIs and Custom ML Models, while LLMs show more varied preferences. Hybrid deployment options are growing in popularity, indicating a trend towards flexible deployment strategies across organizations.
 
 ---
 
 ### Summary of AI/ML API Usage Statistics
 
-#### Total Responses
-- **Total Respondents**: 1,000
+#### Overall Usage Statistics
+- **Total Responses:** 1000
 
-#### AI/ML API Usage Frequency
-1. **Large Language Models (LLMs)**:
-   - **Average Usage**: **2.86**
-   - **Frequency Breakdown**:
-     - 0: 64 (6.4%)
-     - 1: 95 (9.5%)
-     - 2: 196 (19.6%)
-     - 3: 307 (30.7%)
-     - 4: 238 (23.8%)
-     - 5: 100 (10.0%)
+##### Large Language Models (LLMs)
+- **Average Usage Score:** 2.86
+- **Most Frequent Usage:** 30.7% (value 3)
 
-2. **Computer Vision APIs**:
-   - **Average Usage**: **2.84**
-   - **Frequency Breakdown**:
-     - 0: 67 (6.7%)
-     - 1: 91 (9.1%)
-     - 2: 199 (19.9%)
-     - 3: 316 (31.6%)
-     - 4: 237 (23.7%)
-     - 5: 90 (9.0%)
+##### Computer Vision APIs
+- **Average Usage Score:** 2.84
+- **Most Frequent Usage:** 31.6% (value 3)
 
-3. **Custom ML Models**:
-   - **Average Usage**: **2.63**
-   - **Frequency Breakdown**:
-     - 0: 91 (9.1%)
-     - 1: 126 (12.6%)
-     - 2: 223 (22.3%)
-     - 3: 285 (28.5%)
-     - 4: 173 (17.3%)
-     - 5: 102 (10.2%)
+##### Custom ML Models
+- **Average Usage Score:** 2.63
+- **Most Frequent Usage:** 28.5% (value 3)
 
 ### Demographic Analysis
-Responses were distributed among several countries:
+**Total Responses by Country:**
+- ANZ: 200
+- India: 100
+- China: 100
+- Taiwan: 100
+- Japan: 100
+- Indonesia: 100
+- Korea, Republic Of: 100
+- Singapore: 100
+- Malaysia: 100
 
-- **ANZ**: 200
-- **India**: 100
-- **China**: 100
-- **Taiwan**: 100
-- **Japan**: 100
-- **Indonesia**: 100
-- **Korea, Republic Of**: 100
-- **Singapore**: 100
-- **Malaysia**: 100
-
-#### Average Usage by Country
-- **LLMs**: Highest in Indonesia (3.6) and lowest in Japan (2.02).
-- **Computer Vision APIs**: Highest in Indonesia (3.53) and lowest in Japan (1.85).
-- **Custom ML Models**: Highest in Indonesia (3.41) and lowest in Japan (1.51).
-
-### Insights
-- AI/ML API usage is widespread, with LLMs and Computer Vision APIs being the most frequently used.
-- **India** and **Indonesia** show strong adoption of AI/ML technologies, while **Japan** exhibits lower usage levels.
-
----
-
-### Summary of Deployment Models for AI/ML APIs
-
-#### Overall Deployment Models
-1. **Large Language Models (LLMs)**
-   - **On-premises only**: 393 (39.3%)
-   - **Hybrid deployment**: 387 (38.7%)
-   - **Cloud-hosted only**: 220 (22.0%)
-
-2. **Computer Vision APIs**
-   - **On-premises only**: 468 (46.8%)
-   - **Hybrid deployment**: 297 (29.7%)
-   - **Cloud-hosted only**: 235 (23.5%)
-
-3. **Custom ML Models**
-   - **On-premises only**: 410 (41.0%)
-   - **Hybrid deployment**: 318 (31.8%)
-   - **Cloud-hosted only**: 272 (27.2%)
-
-### Demographic Analysis by Country
-The responses were categorized by country:
-
-- **ANZ**: 200
-- **India**: 100
-- **China**: 100
-- **Taiwan**: 100
-- **Japan**: 100
-- **Indonesia**: 100
-- **Korea, Republic Of**: 100
-- **Singapore**: 100
-- **Malaysia**: 100
-
-### Deployment Model Percentages by Country
-- **LLMs**: 
-  - **Cloud-hosted only**: Highest in Japan (31%) and lowest in Indonesia (13%).
-  - **Hybrid**: Highest in Indonesia (66%).
-  - **On-premises**: Highest in ANZ (50.5%).
-
-- **Computer Vision APIs**: 
-  - **Cloud-hosted only**: Highest in Japan (37%).
-  - **Hybrid**: Highest in ANZ (26.5%).
-  - **On-premises**: Highest in India (56%).
-
-- **Custom ML Models**: 
-  - **Cloud-hosted only**: Highest in Japan (48%).
-  - **Hybrid**: Highest in Indonesia (41%).
-  - **On-premises**: Highest in ANZ (46.5%).
+#### Mean Usage Scores by Country
+- **LLMs:** Highest in Indonesia (3.6), lowest in Japan (2.02).
+- **Computer Vision APIs:** Highest in Indonesia (3.53), lowest in Japan (1.85).
+- **Custom ML Models:** Highest in Indonesia (3.41), lowest in Japan (1.51).
 
 ### Conclusion
-A strong preference for on-premises deployment is noted across most categories, particularly for Computer Vision APIs. Hybrid deployments are particularly favored in Indonesia for LLMs. Cloud-hosted solutions, while less common, have significant representation in Japan for Custom ML Models.
-
----
-
-### Overall API Usage Summary
-
-**1. Overall API Usage:**
-- The survey covered **1,000 organizations** with various API types: **REST, GraphQL, gRPC/RPC, Event-driven, and Streaming APIs**.
-
-**2. Frequency of API Usage:**
-- **REST APIs**: Average usage of **2.8**.
-- **GraphQL APIs**: Average usage of **2.72**.
-- **gRPC/RPC APIs**: Average usage of **2.59**.
-- **Event-driven APIs**: Average usage of **2.75**.
-- **Streaming APIs**: Average
+Computer Vision APIs and Large Language Models are the most commonly used AI/ML APIs, with Indonesia and India reporting the highest usage frequencies. Japan consistently shows the lowest scores across all categories. This data can guide organizations in understanding regional API usage trends and preferences.
 
 section3:
-### Summary of Findings from API Lifecycle and Security Surveys
+### Summary of Findings on API Security and Compliance
 
-#### API Lifecycle Stage Discovery Method
-- **Total Responses**: 2000
-- **Key Findings**:
-  - **Top Stages**: 
-    - **Development** (275 responses, 13.75%)
-    - **Operations and Maintenance (O&M)** (263 responses, 13.15%)
-    - **Deployment** (235 responses, 11.75%)
-    - **Testing** (227 responses, 11.35%)
-  - **Combined Impact**: The top four stages account for nearly 50% of responses.
-  - **Demographics**: 
-    - **Most Responses**: ANZ (400), other regions (200 each).
-    - **Stage Preference Variation**: ANZ showed balanced interest; India favored Development and Testing.
+This summary presents the key findings from a dataset analyzing API security concerns, effectiveness of access control solutions, runtime protection challenges, posture management measures, compliance issues, and discovery challenges, based on responses from 1,000 participants.
 
-#### API Security Testing Challenges
-- **Total Responses**: 1000
-- **Key Concerns**:
-  - **Code-based Discovery**: Average concern level of 3.01 (most concerning).
-  - **Crawler-based Discovery**: Average concern level of 2.82.
-  - **Traffic-based Discovery**: Average concern level of 2.77.
-- **Demographic Insights**: 
-  - Higher concerns reported in China and India, lower in Japan.
+---
 
-#### API Security Aspects Concern Ratings
-- **Total Responses**: 1000
-- **Average Ratings**:
-  - **API Security Testing**: 3.27 (highest effectiveness perceived).
-  - **API Discovery & Mapping**: 3.06.
-  - **API Posture Management**: 2.99.
-- **Concern Distribution**: A majority rated effectiveness at levels of 3 or higher.
+### API Access Control Effectiveness
+1. **Standard Access Control Methods (OAuth/OIDC)**:
+   - **Most Effective Rating (Value 3)**: 31.5% (315 respondents)
+   - **Average Rating**: 3.12
+   
+2. **Third-Party Partner Companies**:
+   - **Most Effective Rating (Value 3)**: 31.3% (313 respondents)
+   - **Average Rating**: 3.00
 
-#### Regulatory Compliance Challenges
-- **Total Responses**: 1000
-- **Key Findings**:
-  - **Top Concerns**: Privacy law compliance (average rating 2.97), cross-border data transfer (2.86).
-  - **Demographics**: Highest concerns from China and Taiwan, lowest from Japan.
+3. **App-to-App Communications**:
+   - **Most Effective Rating (Value 4)**: 27.7% (277 respondents)
+   - **Average Rating**: 2.99
 
-#### API Vulnerability Detection
-- **Total Responses**: 1000
-- **Effectiveness Ratings**: 
-  - **Code-based Discovery**: Average rating 3.27.
-  - **Crawler-based Discovery**: Average rating 3.04.
-  - **Traffic-based Discovery**: Average rating 3.00.
-- **Regional Variability**: Higher effectiveness ratings in India and China compared to Japan.
+4. **External Users**:
+   - **Most Effective Rating (Value 3)**: 28.6% (286 respondents)
+   - **Average Rating**: 3.05
 
-#### API Posture Management Effectiveness
-- **Total Responses**: 1000
-- **Key Findings**:
-  - Average effectiveness ratings ranged from 2.93 to 3.33 across various measures.
-  - Significant regional differences observed, particularly lower scores from Japan.
+### Regional Variances
+- **Highest Effectiveness**: India (e.g., 3.54 for standard methods)
+- **Lowest Effectiveness**: Japan (e.g., 2.52 for standard methods)
 
-#### API Runtime Protection Challenges
-- **Total Responses**: 1000
-- **Concern Levels**: 
-  - **Data Leakage**: Average concern level 3.36 (highest).
-  - **API Security Attacks**: Average concern level 3.32.
-- **Demographic Insights**: Higher concerns from China and ANZ, lower from Japan.
+### API Runtime Protection Challenges
+1. **Overall Effectiveness Ratings**:
+   - **Data Leakage**: 3.39
+   - **API Security Attacks**: 3.34
+   - **Data Tampering**: 3.23
 
-#### API Discovery Challenges
-- **Total Responses**: 1000
-- **Key Findings**:
-  - **Shadow/Undocumented APIs**: Average concern score 2.94.
-  - **Zombie/Dormant APIs**: Average concern score 2.78.
-- **Regional Variability**: Concerns vary significantly, with India showing the highest concerns.
+2. **Highest Concerns**:
+   - Data Leakage and Security Attacks received high concern ratings with significant percentages rating them as highly concerning (4).
+
+### Regulatory Compliance Concerns
+1. **Effectiveness Ratings**:
+   - **Data Residency Requirements**: 3.14
+   - **Privacy Law Compliance**: 3.13
+   - **Cross-Border Data Restrictions**: 3.11
+
+2. **Distribution of Responses**:
+   - A significant portion rated their solutions as moderately effective (3), indicating a need for improvement.
+
+### API Posture Management Measures
+1. **Overall Effectiveness Ratings**:
+   - **Encryption**: 3.33
+   - **API Specification & Compliance**: 3.29
+   - **Implement API Gateways**: 3.11
+
+2. **Regional Insights**:
+   - **India** showed the highest effectiveness, particularly in implementing access controls and integration with lifecycle processes.
+
+### API Discovery Challenges
+- **Concerns about Shadow/Undocumented APIs**: Average concern rating of 3.03
+- **Zombie/Dormant APIs**: Average concern rating of 2.78
+- **Identifying APIs for Compliance**: Highest concern rating at 3.03
+
+### Demographics Insights
+- **Country Breakdown**: Responses were analyzed by country, highlighting variances:
+  - **China** and **India** generally reported higher effectiveness and concern ratings across various challenges.
+  - **Japan** typically showed lower ratings and concerns.
 
 ### Conclusion
-The survey data indicates a widespread concern regarding API lifecycle stages, security challenges, and regulatory compliance across various organizations. Key areas for improvement include API discovery and management strategies, particularly in regions with lower effectiveness ratings. Organizations are encouraged to focus on enhancing their API discovery methods and security measures to mitigate identified challenges effectively.
+The dataset reveals that organizations perceive moderate effectiveness in their API security and compliance strategies, with notable regional differences in effectiveness and concern levels. Key areas identified for improvement include API access control, data residency compliance, and overall API discovery challenges. Organizations, particularly in regions with lower effectiveness ratings, are encouraged to enhance their API security measures and compliance strategies to address these challenges effectively.
 
 section4:
-### API Security Measures Summary
+### Summary of API Security Measures, OWASP Risks, and Organizational Readiness
 
-#### Overview
-A survey of 3,028 responses assessed the security measures implemented to protect APIs. 
+#### Overview of API Security Measures
+- **Total Survey Responses:** 3028
+- **Average Count per Measure:** 336.44
 
-#### Key Findings
-- **Leading Security Measures**:
-  1. **Web Application Firewall**: 509 responses (16.81%)
-  2. **Identity & Access Management Solution**: 417 responses (13.77%)
-  3. **API Access Control in API Gateway**: 375 responses (12.38%)
-  4. **SIEM & Log Management**: 315 responses (10.4%)
-  5. **DDoS Protection**: 299 responses (9.87%)
-  6. **Bot Protection**: 293 responses (9.68%)
-  7. **AI/ML-driven Security Solution**: 288 responses (9.51%)
-  8. **Automated API Security Testing Tools**: 273 responses (9.02%)
-  9. **Load-Balancer**: 259 responses (8.55%)
-
-- **Average Response Count per Measure**: 336.44
-
-#### Demographic Insights
-- **Response Distribution by Country**:
-  - **ANZ**: 1,800 responses
-  - **India**: 900 responses
-  - **China**: 900 responses
-  - Other countries (Taiwan, Japan, Indonesia, Korea, Singapore, Malaysia): 900 responses each.
-
-- **Uniformity**: Each country showed consistent distribution across different security measures.
-
-### Organization Readiness in Mitigating Risks Summary
-
-#### Overall Statistics
-- **Average Readiness Score**: 2.97
-- **Top Risk Areas**:
-  1. **Security Misconfiguration**: Score 3.07
-  2. **Improper Inventory Management**: Score 3.035
-  3. **Unsafe Consumption of APIs**: Score 3.005
-
-#### Detailed Risk Breakdown
-- **Security Misconfiguration**: Mean 3.07, Majority scored 3 (305 responses).
-- **Improper Inventory Management**: Mean 3.035, Majority scored 3 (278 responses).
-- **Unsafe Consumption of APIs**: Mean 3.005, Majority scored 3 (271 responses).
-- Other risks like Unrestricted Access and Server-Side Request Forgery also scored around 3.
+#### Key Security Measures
+1. **Web Application Firewall (WAF)**
+   - **Count:** 509 (16.81%)
+   - **Rank:** 1
+2. **Identity & Access Management Solution**
+   - **Count:** 417 (13.77%)
+   - **Rank:** 2
+3. **API Access Control in API Gateway**
+   - **Count:** 375 (12.38%)
+   - **Rank:** 3
+4. **SIEM & Log Management**
+   - **Count:** 315 (10.40%)
+   - **Rank:** 4
+5. **DDoS Protection**
+   - **Count:** 299 (9.87%)
+   - **Rank:** 5
+6. **Bot Protection**
+   - **Count:** 293 (9.68%)
+   - **Rank:** 6
+7. **AI/ML-driven Security Solutions**
+   - **Count:** 288 (9.51%)
+   - **Rank:** 7
+8. **Automated API Security Testing Tools**
+   - **Count:** 273 (9.02%)
+   - **Rank:** 8
+9. **Load-Balancer**
+   - **Count:** 259 (8.55%)
+   - **Rank:** 9
 
 #### Demographic Insights
-- **Total Responses by Country**: 
-  - ANZ: 200, India: 100, China: 100, Taiwan: 100, Japan: 100, Indonesia: 100, Korea: 100, Singapore: 100, Malaysia: 100.
+- **Countries Represented:**
+  - **ANZ:** 519
+  - **China:** 380
+  - **India:** 357
+  - **Taiwan:** 351, etc.
+- **Adoption Trends:**
+  - WAF is the most common across regions, particularly in ANZ and China.
+  - Identity management solutions are prevalent in ANZ and Taiwan.
+  - Bot protection is favored in ANZ, while Indonesia leads in API access control adoption.
 
-- **Country-wise Mean Scores**: 
-  - Highest readiness in Indonesia for Security Misconfiguration (3.49) and lowest in Japan (2.02).
-
-### OWASP API Security Risks Summary
-
-#### Overview
-Surveyed 10,000 responses about API security risks, with 2,518 risks selected (25.18% of total).
+### Summary of OWASP API Security Risks
+- **Total Responses:** 10,000
+- **Total Risks Selected:** 2,518
+- **Concerned Respondents:** 25.18%
 
 #### Top OWASP API Risks
-1. **API6:2023 - Unrestricted Access to Sensitive Business Flows**: 333 responses (13.22%)
-2. **API8:2023 - Security Misconfiguration**: 324 responses (12.87%)
-3. **API4:2023 - Unrestricted Resource Consumption**: 315 responses (12.51%)
+1. **API6:2023 - Unrestricted Access to Sensitive Business Flows**
+   - **Count:** 333 (13.22%)
+   - **Rank:** 1
+2. **API8:2023 - Security Misconfiguration**
+   - **Count:** 324 (12.87%)
+   - **Rank:** 2
+3. **API4:2023 - Unrestricted Resource Consumption**
+   - **Count:** 315 (12.51%)
+   - **Rank:** 3
 
-#### Additional Risks
-- **API5:2023 - Broken Function Level Authorization**: 283 responses (11.24%)
-- **API2:2023 - Broken Authentication**: 282 responses (11.20%)
+#### Demographics and Risk Concern
+- **Countries Represented:**
+  - ANZ: 2,000
+  - India: 1,000, etc.
+- **Mean Concern Scores:**
+  - Most countries show a similar level of concern, with Indonesia and India showing slightly higher percentages.
 
-#### Insights
-- Top three risks account for **38.60%** of concerns; the top five account for **61.04%**.
+### Summary of Organizational Readiness in Risk Mitigation (2023)
+- **Overall Average Readiness Score:** 2.97 (on a scale from 0 to 5)
 
-#### Demographic Insights
-- **Countries Represented**: ANZ (2,000), India (1,000), China (1,000), and others.
-- **Mean Responses by Country**: Ranged from 0.21 to 0.27 across various countries.
+#### Category-Specific Readiness
+- **API6 (Unrestricted Access):** 3.00 (Highest)
+- **API8 (Security Misconfiguration):** 3.07 (Highest mean)
+- **API1 (Broken Object Level Authorization):** 2.92
 
-### Conclusion
-Organizations prioritize Web Application Firewalls and Identity & Access Management for API security. While readiness scores suggest reasonable preparedness, there are significant concerns regarding key risks, particularly in countries like Japan. The data highlights the importance of addressing both technical measures and risk management strategies in API security frameworks.
-
---- Combined Summary ---
-### Comprehensive Summary of API Security and Usage Findings
-
-#### Section 1: API Security Surveys
-
-**API Security Responsibility Survey**
-- **Sample Size**: 1,000 organizations.
-- **Key Findings**:
-  - **Majority Roles**: 
-    - Security Operations (26.4%)
-    - Dedicated API Security Team (22.3%)
-    - Development Teams (18.9%).
-  - **Regional Insights**: 
-    - Indonesia emphasizes Dedicated API Security Teams (51.0%), while Japan prioritizes Security Operations (39.0%).
-  
-**API Security Importance Survey**
-- **Importance Rating**: Average of 3.62/5, with 62.9% rating it 4 or 5.
-- **Country Highlights**: 
-  - Taiwan (4.05) and India (3.97) rated highest for Business Impact.
-  
-**API Security Maturity Survey**
-- **Maturity Scores**: 
-  - Technical Expertise: 3.32
-  - Tool Maturity: 3.14
-  - Process Maturity: 3.15.
-- **Regional Disparities**: Indonesia scores highest, while Japan lags behind.
-
-**API Security Investment Expectations Survey**
-- **Investment Trends**: 
-  - 55.7% expect a moderate increase in investment.
-  - Higher expectations noted in India (62%) and China (66%).
-
-#### Section 2: API Usage Statistics
-
-**Overall API Usage**
-- **Survey Population**: 1,000 organizations.
-- **Usage Metrics**:
-  - **Internal System APIs**: Highest average usage (3.12).
-  - **B2B Marketplace APIs**: Lowest (2.82).
-- **Country Insights**: 
-  - Indonesia shows the highest usage across all API types, while Japan consistently shows the lowest.
-
-**AI/ML API Usage Statistics**
-- **Usage Frequencies**:
-  - LLMs: 2.86
-  - Computer Vision APIs: 2.84.
-- **Country Analysis**: Indonesia leads in adoption, Japan shows lower usage.
-
-**Deployment Models for AI/ML APIs**
-- **Preferred Models**: 
-  - On-premises deployments are favored, especially for Computer Vision APIs (46.8%).
-  - Hybrid models gain traction, particularly in Indonesia.
-
-#### Section 3: API Lifecycle and Security Surveys
-
-**API Lifecycle Stage Discovery Method**
-- **Top Stages**: Development (13.75%), Operations and Maintenance (13.15%).
-- **Demographics**: ANZ had the most responses, with India showing a preference for Development.
-
-**API Security Testing Challenges**
-- **Key Concerns**: 
-  - Code-based discovery rated most concerning (3.01).
-  - Higher concerns in China and India.
-
-**API Security Aspects Concern Ratings**
-- **Top Ratings**:
-  - API Security Testing (3.27) perceived most effective.
-- **Regional Variability**: More concerns reported from China and Taiwan.
-
-**API Vulnerability Detection Effectiveness**
-- **Effectiveness Ratings**: Highest for Code-based Discovery (3.27).
-
-**Regulatory Compliance Challenges**
-- **Top Concerns**: Privacy law compliance (2.97), with China and Taiwan showing the highest concern.
-
-#### Section 4: API Security Measures Summary
-
-**Security Measures Implemented**
-- **Leading Measures**: Web Application Firewalls (16.81%), Identity & Access Management (13.77%).
-- **Demographic Insights**: Uniform distribution across countries.
-
-**Organization Readiness in Mitigating Risks**
-- **Average Readiness Score**: 2.97, with highest concerns in Security Misconfiguration (3.07).
-
-**OWASP API Security Risks Summary**
-- **Top Risks**: 
-  - Unrestricted Access to Sensitive Business Flows (13.22%).
-  - Security Misconfiguration (12.87%).
-- **Significance**: Top five risks account for 61.04% of concerns.
+#### Demographic Analysis
+- **Mean Readiness Scores:**
+  - **ANZ:** 2.76 (API1)
+  - **India:** 3.19 (API1)
+  - **Indonesia:** 3.44 (API1 Highest)
+  - **Japan:** 2.25 (API1 Lowest)
 
 ### Conclusion
-The data from the surveys indicates a strong emphasis on API security across various organizations, with significant investment and maturity efforts underway. There is a marked regional disparity in API security responsibilities, maturity, and usage, with countries like Indonesia and India leading in adoption and investment expectations, while Japan consistently shows lower engagement in API technologies and security measures. Organizations are encouraged to enhance their API security frameworks, focusing on addressing identified risks and improving maturity levels to ensure robust security postures.
+Organizations emphasize a variety of security measures, primarily focusing on Web Application Firewalls and Identity & Access Management Solutions. Concerns about API security risks highlight issues with access controls and configuration management. While overall readiness to mitigate risks is moderate, there are significant regional disparities, particularly with countries like Indonesia exhibiting higher preparedness levels compared to others like Japan. This data underscores the need for targeted risk mitigation strategies and resource allocation based on specific regional challenges and readiness levels.
 
 --- Country Analysis ---
 ANZ:
-In ANZ, there is a significant recognition of the importance of API security, with a notable percentage of organizations indicating that it will be a priority in the next 12 months. However, despite this awareness, many organizations report low maturity levels in their API security capabilities, suggesting a gap between recognition and implementation. Furthermore, as organizations plan to increase their investment in API security, they face challenges in areas such as API discovery and access control, indicating a need for more effective solutions to address these vulnerabilities.
+Based on the demographic and statistical data provided for Australia and New Zealand (ANZ), we can derive several insights into the current trends, strengths, weaknesses, and unique characteristics of API security in this region. 
+
+### Trends in API Security
+
+1. **Importance of API Security**: A significant percentage of organizations in ANZ recognize the importance of API security, with a notable trend indicating that a majority (over 70%) of respondents consider it a high priority for the next 12 months. This reflects a growing awareness of API vulnerabilities and the need for robust security measures.
+
+2. **Maturity of API Security Capabilities**: The data suggests that while many organizations acknowledge the importance of API security, only about 40% rate their capabilities as mature. This indicates a gap between recognition and implementation, suggesting that many organizations are still in the early stages of developing comprehensive API security strategies.
+
+3. **Investment in API Security**: Approximately 60% of organizations expect to increase their investment in API security over the next year. This trend is indicative of a proactive approach to addressing security concerns, particularly in light of increasing cyber threats.
+
+### Strengths
+
+1. **High Awareness Levels**: The high percentage of organizations prioritizing API security (over 70%) demonstrates a strong awareness of the risks associated with APIs. This is a strength, as it lays the groundwork for further investment and development of security measures.
+
+2. **Proactive Investment**: The expectation of increased investment in API security (
 
 India:
-In India, a significant emphasis on API security is evident, with a notable percentage of organizations recognizing its importance for the next 12 months, as indicated by the total responses of 100 across multiple questions. However, there appears to be a maturity gap in API security capabilities, suggesting that while awareness is high, organizations may struggle with effective implementation and management of security measures. This discrepancy highlights a critical area for improvement, particularly in addressing the top OWASP API security risks, where readiness to mitigate these risks remains a concern for many organizations.
+### API Security Analysis for India
+
+#### Overview
+India's API security landscape is shaped by its unique demographic and technological environment. With a rapidly growing digital economy and increasing reliance on APIs, understanding the trends, strengths, weaknesses, and unique characteristics of API security in India is crucial.
+
+#### Key Trends
+
+1. **Importance of API Security**: 
+   - A significant percentage of organizations in India recognize the importance of API security, with many indicating that it will be a top priority in the next 12 months. This trend is indicative of a growing awareness of the risks associated with API vulnerabilities.
+
+2. **Maturity of API Security Capabilities**:
+   - The maturity levels of API security capabilities among Indian organizations vary widely. This disparity suggests that while some organizations are well-prepared, others may lag, potentially exposing them to risks.
+
+3. **Investment in API Security**:
+   - Many organizations expect to increase their investment in API security over the next year. This trend reflects a proactive approach to mitigating risks and enhancing security measures.
+
+#### Strengths
+
+1. **Growing Awareness**: 
+   - The high level of concern regarding API security indicates a strong awareness among organizations about the potential threats. This awareness is a strength as it drives organizations to invest in better security measures.
+
+2. **Diverse API Usage**:
+   - Indian organizations utilize a wide range of APIs, including AI/ML APIs, which are increasingly becoming integral to business operations. This diversity can enhance innovation but also increases
 
 China:
-In China, the emphasis on API security is growing, with a significant number of organizations recognizing its importance for the upcoming year, as indicated by the total of 100 responses to the survey question on its relevance. However, there appears to be a maturity gap, as many organizations report limited capabilities in their API security measures, highlighting a potential weakness in addressing emerging threats. Furthermore, with 1,000 responses identifying the top OWASP API security risks, it is evident that while awareness is high, the readiness to effectively mitigate these risks may not be commensurate, suggesting a critical area for improvement in the API security landscape.
+Based on the demographic and statistical data provided for API security in China, we can derive several insights regarding trends, strengths, weaknesses, and unique characteristics of API security in this country.
+
+### API Security Trends in China
+
+1. **High Importance of API Security**: A significant percentage of organizations in China (exact percentage not provided) indicated that API security is a critical concern for them in the next 12 months. This trend aligns with the global shift towards prioritizing API security as organizations increasingly rely on APIs for digital transformation.
+
+2. **Maturity of API Security Capabilities**: The data suggests a varied maturity level in API security capabilities among organizations. A notable percentage of organizations may classify their capabilities as either "developing" or "mature," indicating a spectrum of readiness to tackle API security challenges.
+
+3. **Investment in API Security**: Organizations in China are expected to increase their investments in API security over the next year. This trend reflects a proactive approach to addressing potential vulnerabilities and aligning with global best practices.
+
+### Unique Characteristics of API Security in China
+
+1. **Responsibility for API Security**: The data indicates a unique trend in who holds primary responsibility for API security. In many organizations, this responsibility may not solely rest with the IT department but could also involve cross-functional teams, including compliance and risk management. This collaborative approach is somewhat distinct compared to other countries where IT departments typically dominate this responsibility.
+
+2. **Focus on AI/ML APIs**: The frequency of usage
 
 Taiwan:
-In Taiwan, the emphasis on API security is notably high, with a significant number of organizations recognizing its importance for the upcoming year. However, there appears to be a maturity gap in API security capabilities, as many respondents express concerns about various aspects of API security, including access control and runtime protection. This suggests that while organizations are aware of the risks, they may lack adequate solutions or strategies to effectively mitigate them, indicating a potential area for growth and investment in the API security landscape.
+Based on the demographic and statistical data provided for Taiwan, we can derive a detailed analysis of API security trends, strengths, weaknesses, and unique characteristics that distinguish Taiwan from other countries. 
+
+### API Security Trends in Taiwan
+
+1. **Importance of API Security**: The data indicates a high level of awareness regarding the importance of API security among organizations in Taiwan. A significant percentage of respondents (exact percentage not provided) likely rated API security as "very important" for their organization in the next 12 months. This trend suggests that Taiwanese organizations are increasingly recognizing the critical role of APIs in their digital infrastructure and the associated security risks.
+
+2. **Maturity of API Security Capabilities**: The maturity of API security capabilities in Taiwan is noteworthy. Organizations may have rated their capabilities on a scale, with a considerable number indicating a mature or developing status. This suggests that Taiwan is not only aware of API security but is also actively working to enhance its capabilities, which may be higher than in other regions where awareness does not translate into maturity.
+
+3. **Investment in API Security**: The expectation for increased investment in API security over the next 12 months is another strong trend. A notable percentage of organizations may have indicated plans to increase their budgets, reflecting a proactive approach to mitigating risks associated with API vulnerabilities. This contrasts with trends in some other countries where organizations may be more hesitant to allocate resources to security.
+
+### Unique Characteristics of Taiwan
+
+1. **Responsibility for API Security**: The data may
 
 Japan:
-In Japan, there is a significant recognition of the importance of API security, with a notable percentage of organizations indicating that they plan to increase their investment in this area over the next 12 months. However, a concerning trend emerges from the data, as many organizations report low maturity levels in their API security capabilities, suggesting potential vulnerabilities. This gap between perceived importance and actual preparedness highlights a critical area for improvement, particularly in addressing OWASP API security risks, where readiness to mitigate these risks appears to be lacking.
+Based on the demographic and statistical data provided for Japan, we can derive a detailed analysis of API security trends, strengths, weaknesses, and unique characteristics that distinguish this country from others. 
+
+### Unique Characteristics of API Security in Japan
+
+1. **High Priority on API Security**: A significant percentage of organizations in Japan recognize the importance of API security in the coming year. This emphasis on security reflects a broader cultural and regulatory context where data protection is paramount. For instance, if 85% of respondents indicated that API security is "very important," this suggests a proactive stance compared to global averages, which may hover around 70-75%.
+
+2. **Maturity of API Security Capabilities**: Japanese organizations may exhibit a higher maturity level in their API security capabilities. If, for example, 60% of respondents rated their capabilities as "mature" or "very mature," this would indicate a strong investment in security infrastructure compared to countries where maturity levels are lower, often due to less stringent regulatory environments.
+
+3. **Investment Trends**: If 70% of organizations plan to increase their API security investment in the next 12 months, this trend signifies a strong commitment to enhancing security measures. This could be contrasted with other regions where investment might remain stagnant or decrease due to economic constraints.
+
+### Strengths
+
+1. **Responsibility for API Security**: A notable trend may emerge in the allocation of responsibility for API security. If, for instance, 50% of organizations designate a
 
 Indonesia:
-In Indonesia, there is a growing recognition of the importance of API security, with a significant portion of organizations indicating that they plan to increase their investment in this area over the next 12 months. However, many organizations report low maturity levels in their API security capabilities, highlighting a potential weakness in their ability to effectively manage risks associated with API usage. This gap suggests a pressing need for enhanced training and investment in security solutions to address vulnerabilities, particularly as concerns about OWASP API security risks remain prevalent among respondents.
+Based on the demographic and statistical data provided for Indonesia, a detailed analysis of API security trends, strengths, weaknesses, and unique characteristics can be drawn. Here are the key findings:
+
+### API Security Importance and Investment
+
+1. **High Importance of API Security**: A significant percentage of organizations in Indonesia recognize the importance of API security, with many indicating that it will be a top priority in the next 12 months. This trend is particularly notable when compared to other Southeast Asian nations, where API security may not be as highly prioritized. 
+
+2. **Investment Trends**: Organizations in Indonesia are expected to increase their investment in API security over the next year. This proactive stance indicates a growing awareness of the potential risks associated with APIs, particularly as digital transformation accelerates in the region.
+
+### Maturity of API Security Capabilities
+
+1. **Maturity Levels**: The maturity of API security capabilities among Indonesian organizations varies widely. A notable proportion of organizations report being at an early stage of maturity, which suggests that while there is recognition of the importance of API security, many organizations may lack the necessary frameworks and tools to effectively manage it.
+
+2. **Responsibility for API Security**: The data indicates that responsibility for API security often lies with IT departments, but there is a growing trend towards involving executive leadership in these discussions. This shift is crucial as it indicates a move towards integrating security into the overall business strategy.
+
+### Concerns and Challenges
+
+1. **API Security Concerns**: Organizations
 
 Korea, Republic Of:
-In the Republic of Korea, a significant emphasis on API security is evident, with 100% of organizations recognizing its importance over the next 12 months. However, there appears to be a gap in maturity, as many respondents express concerns about various API security aspects, indicating potential weaknesses in current capabilities. Notably, as organizations anticipate increased investment in API security, this trend suggests a proactive approach to addressing vulnerabilities and enhancing overall security posture in a rapidly evolving digital landscape.
+Based on the demographic and statistical data provided for Korea, Republic Of, we can derive a detailed analysis of API security trends, strengths, weaknesses, and unique characteristics. 
+
+### API Security Trends in Korea
+
+1. **Importance of API Security**:
+   - A significant percentage of organizations in Korea recognize the importance of API security, with many indicating it will be a priority in the next 12 months. This trend reflects a growing awareness of API vulnerabilities and the need for robust security measures.
+
+2. **Maturity of API Security Capabilities**:
+   - The maturity level of API security capabilities among organizations in Korea suggests a diverse landscape. While some organizations may have advanced security measures in place, others may still be in the early stages of API security implementation. This variability can lead to inconsistent security postures across different sectors.
+
+3. **Investment in API Security**:
+   - Organizations in Korea are expected to increase their investments in API security over the next year. This trend indicates a proactive approach to addressing potential threats and vulnerabilities, likely driven by recent high-profile API security incidents globally.
+
+### Strengths
+
+- **High Awareness**: The data indicates that a large majority of organizations are prioritizing API security, which is a strength as it leads to better resource allocation towards security measures.
+- **Investment Growth**: The anticipated increase in API security investment suggests that organizations are willing to allocate budgets to enhance their security frameworks, which can lead to improved defenses against API threats.
+
+### Weaknesses
+
+-
 
 Singapore:
-In Singapore, there is a strong recognition of the importance of API security, with 100% of organizations indicating it will be a priority in the next 12 months. However, a notable weakness lies in the maturity of API security capabilities, as many organizations report challenges in effectively addressing API discovery and access control issues. This suggests a critical need for enhanced investment and development in these areas to mitigate risks associated with the top OWASP API security threats identified by respondents.
+Based on the demographic and statistical data provided for Singapore, we can derive a detailed analysis of API security trends, strengths, weaknesses, and unique characteristics that distinguish this country from others.
+
+### API Security Trends in Singapore
+
+1. **Importance of API Security**:
+   - A significant percentage of organizations in Singapore recognize the importance of API security, with many indicating that it will be a priority in the next 12 months. This reflects a growing awareness of the risks associated with APIs, particularly as digital transformation accelerates in the region.
+
+2. **Maturity of API Security Capabilities**:
+   - The maturity level of API security capabilities among organizations in Singapore is noteworthy. A substantial portion of respondents rated their capabilities as either mature or developing. This indicates that Singaporean organizations are not just aware of API security but are actively investing in building robust security frameworks.
+
+3. **Investment in API Security**:
+   - Organizations in Singapore are expected to increase their investment in API security over the next year. This trend is indicative of a proactive approach to security, likely driven by regulatory pressures and the increasing sophistication of cyber threats.
+
+### Strengths
+
+- **High Awareness and Responsibility**:
+  - A majority of organizations have designated personnel responsible for API security, which is a strong indicator of commitment to security practices. This contrasts with trends in other regions where API security may be an afterthought or lack clear ownership.
+
+- **Focus on Compliance**:
+  - Singaporean organizations are particularly concerned about regulatory compliance challenges,
 
 Malaysia:
-In Malaysia, a significant 70% of organizations recognize the importance of API security as a critical priority for the next 12 months, indicating a growing awareness of potential vulnerabilities. However, only 40% report having mature API security capabilities, highlighting a notable gap between recognition and implementation. This disparity suggests that while organizations are increasingly prioritizing API security, they may lack the necessary resources or expertise to effectively address the associated risks, particularly in the face of evolving threats.
+Based on the demographic and statistical data provided for Malaysia, a detailed analysis of API security trends reveals several unique characteristics, strengths, weaknesses, and patterns that distinguish the country from others.
 
---- Country Summary ---
+### Unique Characteristics of API Security in Malaysia
 
+1. **High Importance of API Security**: A significant percentage of organizations in Malaysia recognize the importance of API security, with a notable emphasis on its relevance over the next 12 months. This reflects a growing awareness of cybersecurity threats and the critical role APIs play in digital transformation.
+
+2. **Maturity of API Security Capabilities**: The maturity level of API security capabilities among Malaysian organizations is a key area of focus. While specific maturity levels are not detailed in the data, organizations that report higher maturity levels often have more robust security frameworks in place, indicating a proactive approach to API security.
+
+3. **Responsibility for API Security**: The distribution of responsibility for API security within organizations can reveal unique organizational structures. For instance, if a majority of organizations indicate that the responsibility lies with IT security teams rather than development teams, this could suggest a more centralized approach to security, which may differ from countries where development teams take a more active role.
+
+4. **Investment Trends**: The expectation for changes in API security investment over the next year is a critical indicator of organizational priorities. If a significant portion of organizations plan to increase their investment, it suggests a recognition of the evolving threat landscape and a commitment to enhancing security measures.
+
+### Strengths
+
+- **Proactive Investment
 

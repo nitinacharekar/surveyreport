@@ -600,7 +600,7 @@ def save_final_report(state: AgentState) -> AgentState:
         json.dump(report, f, indent=2)
     
     # Save text report
-    with open('output/final_report3.md', 'w') as f:
+    with open('output/final_report.md', 'w') as f:
         f.write("=== Final Report ===\n\n")
 
         f.write("--- Overall Summary ---\n")
