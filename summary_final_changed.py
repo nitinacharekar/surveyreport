@@ -51,9 +51,6 @@ if not OPENAI_API_KEY:
     raise ValueError("OPENAI_API_KEY not found in environment variables")
 openai.api_key = OPENAI_API_KEY
 
-# Add this constant near the top
-MAX_RETRIES = 0  # Set to 0 for now, increase to allow retries
-
 def openai_llm(prompt: str) -> str:
     """
     Generate a response using OpenAI's GPT-4.
@@ -131,10 +128,6 @@ class AgentState(TypedDict):
     validation_feedback: str          # Detailed feedback for improvements
     current_attempt: int             # Current retry attempt number
     needs_section_rerun: Dict[str, bool]  # Flags for section rerun
-    phase: str                       # Current workflow phase
-    current_section: str             # Current section being processed
-    validation_passed: str           # Validation passed flag
-    retry_counts: Dict[str, int]     # Retry counts per phase
 
 # Node Functions
 def process_single_question(section: str, q: str, stats: Dict[str, Any], state: AgentState) -> Tuple[str, str]:
@@ -356,84 +349,44 @@ def process_single_persona(persona_name: str, persona_msg: str, combined_summary
 
 def validate_output(state: AgentState) -> AgentState:
     """
-    Central validation node: validates outputs for different workflow phases based on 'phase' in state.
+    Validate the current outputs and provide feedback.
+    
     Args:
-        state: Current workflow state, must include 'phase' key (e.g., 'section', 'combined', 'country', 'persona')
+        state: Current workflow state
+        
     Returns:
         Updated state with validation results
     """
-    phase = state.get('phase', 'generic')
-    logger.info(f"Validation attempt {state['current_attempt'] + 1} for phase: {phase}")
-
-    # Select output and prompt based on phase
-    if phase == 'section':
-        section = state.get('current_section', 'section1')
-        output = state.get(f'{section}_summary', '')
-        prompt = f"Validate the following summary for {section}. Check for accuracy, clarity, and data support. Flag any hallucinations or unsupported claims.\n\nSummary:\n{output}"
-    elif phase == 'combined':
-        output = state.get('combined_summary', '')
-        prompt = f"Validate the following combined summary of all sections. Check for accuracy, clarity, and data support. Flag any hallucinations or unsupported claims.\n\nCombined Summary:\n{output}"
-    elif phase == 'country':
-        output = state.get('country_analysis', {})
-        prompt = f"Validate the following country analysis. Check for accuracy, clarity, and data support. Flag any hallucinations or unsupported claims.\n\nCountry Analysis:\n{json.dumps(output, indent=2)}"
-    elif phase == 'persona':
-        output = state.get('persona_outputs', {})
-        prompt = f"Validate the following persona interpretations. Check for accuracy, clarity, and data support. Flag any hallucinations or unsupported claims.\n\nPersona Outputs:\n{json.dumps(output, indent=2)}"
-    else:
-        output = state.get('combined_summary', '')
-        prompt = f"Validate the following output. Check for accuracy, clarity, and data support. Flag any hallucinations or unsupported claims.\n\nOutput:\n{output}"
-
+    logger.info(f"Validation attempt {state['current_attempt'] + 1}")
     validation_agent = OpenAIAgent(
         name="validation_agent",
-        system_message="You are a validation agent. Cross-check the following output against the provided statistics. Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. If you find issues, specify which sections need to be rerun. Return APPROVED if all is well. Only respond with one sentence."
+        system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. If you find issues, specify which sections need to be rerun. Return APPROVED if all is well. Only respond with one sentence."""
     )
-
-    state['validation'] = validation_agent.generate_reply([{'role': 'user', 'content': prompt}])
+    
+    all_stats = {
+        'section1': get_section1_stats(),
+        'section2': get_section2_stats(),
+        'section3': get_section3_stats(),
+        'section4': get_section4_stats()
+    }
+    
+    validation_prompt = f"Summaries:\n{json.dumps({
+        'nothing': 'nothing',
+        #'section_summaries': {f'section{i}': state[f'section{i}_summary'] for i in range(1, 5)},
+        #'combined_summary': state['combined_summary'],
+        #'country_analysis': state['country_analysis'],
+        #'country_summary': state['country_summary'],
+        #'personas': state['persona_outputs']
+    }, indent=2)} \n\nStatistics:\n{json.dumps(all_stats, indent=2)}"
+    
+    state['validation'] = validation_agent.generate_reply([{'role': 'user', 'content': validation_prompt}])
+    
+    # Extract feedback and update rerun flags
     state['validation_feedback'] = state['validation']
-    # Set validation_passed flag
-    state['validation_passed'] = "APPROVED" in state['validation'].upper()
-    # Track retry counts per phase
-    if 'retry_counts' not in state:
-        state['retry_counts'] = {}
-    if not state['validation_passed']:
-        state['retry_counts'][phase] = state['retry_counts'].get(phase, 0) + 1
-    # Optionally, set rerun flags based on feedback (for section phase)
-    if phase == 'section':
-        section = state.get('current_section', 'section1')
+    for section in ['section1', 'section2', 'section3', 'section4']:
         state['needs_section_rerun'][section] = section.upper() in state['validation'].upper()
+    
     return state
-
-# Add this function for routing after validation
-def validation_routing(state: AgentState) -> str:
-    phase = state.get('phase', 'generic')
-    retries = state.get('retry_counts', {}).get(phase, 0)
-    if not state.get('validation_passed', False) and retries <= MAX_RETRIES:
-        # Route back to the phase that needs to be redone
-        if phase == "section":
-            return f"process_{state.get('current_section', 'section1')}"
-        elif phase == "combined":
-            return "process_combined"
-        elif phase == "country":
-            return "process_country"
-        elif phase == "persona":
-            return "process_personas"
-    # Otherwise, proceed forward
-    if phase == "section":
-        # Route to next section or combined, etc.
-        next_section = {
-            "section1": "process_section2",
-            "section2": "process_section3",
-            "section3": "process_section4",
-            "section4": "process_combined"
-        }.get(state.get('current_section', 'section1'), "process_combined")
-        return next_section
-    elif phase == "combined":
-        return "process_country"
-    elif phase == "country":
-        return "process_personas"
-    elif phase == "persona":
-        return "increment_attempt"
-    return "increment_attempt"
 
 def should_continue(state: AgentState) -> str:
     """
@@ -506,12 +459,6 @@ def save_final_report(state: AgentState) -> AgentState:
             f.write(f"{country}:\n{analysis}\n\n")
     return state
 
-def set_phase(state: AgentState, phase: str, current_section: str = None) -> AgentState:
-    state['phase'] = phase
-    if current_section:
-        state['current_section'] = current_section
-    return state
-
 def main():
     """
     Main function to set up and run the workflow.
@@ -538,11 +485,7 @@ def main():
             "section2": False,
             "section3": False,
             "section4": False
-        },
-        "phase": "generic",
-        "current_section": "section1",
-        "validation_passed": "",
-        "retry_counts": {}
+        }
     }
     
     # Create graph
@@ -552,74 +495,33 @@ def main():
     for section in ['section1', 'section2', 'section3', 'section4']:
         workflow.add_node(f"process_{section}", lambda s, sec=section: process_section_questions(sec, s))
         workflow.add_node(f"summarize_{section}", lambda s, sec=section: process_section_summary(sec, s))
-        workflow.add_node(f"set_phase_{section}", lambda s, sec=section: set_phase(s, "section", sec))
     
     # Add other nodes
     workflow.add_node("process_combined", process_combined_summary)
-    workflow.add_node("set_phase_combined", lambda s: set_phase(s, "combined"))
     workflow.add_node("process_country", process_country_analysis)
-    workflow.add_node("set_phase_country", lambda s: set_phase(s, "country"))
     workflow.add_node("process_personas", process_personas)
-    workflow.add_node("set_phase_persona", lambda s: set_phase(s, "persona"))
     workflow.add_node("validate_output", validate_output)
     workflow.add_node("increment_attempt", increment_attempt)
     workflow.add_node("save_report", save_final_report)
     
-    # Add edges for section 1
+    # Add edges from START to each section
     workflow.add_edge(START, "process_section1")
+    
+    # Add edges between section nodes
     workflow.add_edge("process_section1", "summarize_section1")
-    workflow.add_edge("summarize_section1", "set_phase_section1")
-    workflow.add_edge("set_phase_section1", "validate_output")
-    workflow.add_edge("validate_output", "process_section2")
-    
-    # Section 2
+    workflow.add_edge("summarize_section1", "process_section2")
     workflow.add_edge("process_section2", "summarize_section2")
-    workflow.add_edge("summarize_section2", "set_phase_section2")
-    workflow.add_edge("set_phase_section2", "validate_output")
-    workflow.add_edge("validate_output", "process_section3")
-    
-    # Section 3
+    workflow.add_edge("summarize_section2", "process_section3")
     workflow.add_edge("process_section3", "summarize_section3")
-    workflow.add_edge("summarize_section3", "set_phase_section3")
-    workflow.add_edge("set_phase_section3", "validate_output")
-    workflow.add_edge("validate_output", "process_section4")
-    
-    # Section 4
+    workflow.add_edge("summarize_section3", "process_section4")
     workflow.add_edge("process_section4", "summarize_section4")
-    workflow.add_edge("summarize_section4", "set_phase_section4")
-    workflow.add_edge("set_phase_section4", "validate_output")
-    workflow.add_edge("validate_output", "process_combined")
     
-    # Combined summary
-    workflow.add_edge("process_combined", "set_phase_combined")
-    workflow.add_edge("set_phase_combined", "validate_output")
-    workflow.add_edge("validate_output", "process_country")
-    
-    # Country analysis
-    workflow.add_edge("process_country", "set_phase_country")
-    workflow.add_edge("set_phase_country", "validate_output")
-    workflow.add_edge("validate_output", "process_personas")
-    
-    # Persona analysis
-    workflow.add_edge("process_personas", "set_phase_persona")
-    workflow.add_edge("set_phase_persona", "validate_output")
+    # Add edges for combined analysis and country analysis
+    workflow.add_edge("summarize_section4", "process_combined")
+    workflow.add_edge("process_combined", "process_country")
+    workflow.add_edge("process_country", "process_personas")
+    workflow.add_edge("process_personas", "validate_output")
     workflow.add_edge("validate_output", "increment_attempt")
-    
-    # Add conditional validation routing after each validate_output
-    workflow.add_conditional_edges(
-        "validate_output",
-        validation_routing,
-        {
-            "process_section1": "process_section1",
-            "process_section2": "process_section2",
-            "process_section3": "process_section3",
-            "process_section4": "process_section4",
-            "process_combined": "process_combined",
-            "process_country": "process_country",
-            "process_personas": "process_personas",
-            "increment_attempt": "increment_attempt"
-        }
-    )
     
     # Add conditional edges from increment
     workflow.add_conditional_edges(
