@@ -83,6 +83,24 @@ def load_section_stats():
             print(f"Warning: Could not load stats for {section}: {e}")
     return all_section_stats
 
+def aggregate_country_stats(country_data, exclude_country):
+    """
+    Aggregate stats for all countries except `exclude_country`.
+    Returns a dict in the same format as a single country's entry.
+    """
+    from collections import defaultdict
+    agg = defaultdict(lambda: defaultdict(int))
+    for country, qdict in country_data.items():
+        if country == exclude_country:
+            continue
+        for qkey, qstats in qdict.items():
+            for stat_key, value in qstats.items():
+                if isinstance(value, (int, float)):
+                    agg[qkey][stat_key] += value
+                else:
+                    agg[qkey][stat_key] = value
+    return {qkey: dict(stats) for qkey, stats in agg.items()}
+
 def main():
     # Test loading and print sample demographic summaries
     all_section_stats = load_section_stats()
@@ -95,6 +113,15 @@ def main():
         print(f"Generating insight for {country}...")
         country_outputs[country] = generate_insights_for_country(country, summary)
         print(f"Insight for {country}: {country_outputs[country]}")
+
+    # --- Country vs Rest Comparison Test ---
+    print("\n=== Country vs Rest Comparison Prompts ===")
+    for country, summary in country_data.items():
+        other_agg = aggregate_country_stats(country_data, country)
+        prompt = f"""
+Compare the following data for {country} to the aggregate of all other countries. Highlight unique trends, strengths, and weaknesses, and use specific data points.\n\n{country} Data:\n{json.dumps(summary, indent=2)}\n\nAll Other Countries Aggregate:\n{json.dumps(other_agg, indent=2)}\n"""
+        print(f"\n--- {country} vs Rest Prompt ---\n{prompt}")
+
     # Save insights to file
     output_path = Path("output/country_insights.json")
     output_path.parent.mkdir(exist_ok=True)
@@ -146,38 +173,6 @@ def main():
 
     print("=== Moderator's Comparative Summary ===")
     print(final_comparative)
-
-    # Minimal working example for debugging
-    print("\n=== Minimal Group Chat Debug Example ===")
-    minimal_country_outputs = {
-        "Japan": "Japan has strong API security awareness but low maturity.",
-        "India": "India is investing in API security but faces implementation challenges."
-    }
-    minimal_agents = [
-        autogen.AssistantAgent(name="Japan_agent", system_message="You are the Japan analyst."),
-        autogen.AssistantAgent(name="India_agent", system_message="You are the India analyst.")
-    ]
-    minimal_moderator = autogen.AssistantAgent(
-        name="Moderator",
-        system_message="You are a global API Security moderator. Summarize the above."
-    )
-    minimal_groupchat = autogen.GroupChat(agents=minimal_agents + [minimal_moderator], messages=[], max_round=1)
-    minimal_manager = autogen.GroupChatManager(groupchat=minimal_groupchat, llm_config={"api_key": OPENAI_API_KEY, "model": "gpt-4o-mini"})
-    for country, agent in zip(minimal_country_outputs.keys(), minimal_agents):
-        minimal_groupchat.messages.append({
-            "role": "assistant",
-            "name": agent.name,
-            "content": minimal_country_outputs[country]
-        })
-    minimal_groupchat.messages.append({
-        "role": "assistant",
-        "name": minimal_moderator.name,
-        "content": "Please summarize the above country analyses."
-    })
-    minimal_discussion = minimal_manager.run()
-    print("\n=== All Group Chat Messages ===")
-    for msg in minimal_groupchat.messages:
-        print(msg)
 
 if __name__ == "__main__":
     main() 

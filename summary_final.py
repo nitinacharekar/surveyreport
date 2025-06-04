@@ -288,6 +288,7 @@ You are an expert in API Security analysis. Based on the following demographic a
 - Identify any outliers, surprising results, or unique patterns in the data.
 - Use specific data points as evidence for your claims (percentages, counts, averages, etc.).
 - Avoid generic statements; focus on what is truly unique or notable for this country.
+- Avoid talking about counts of people who participated in total for a question, instead focus on the specific answers to the questions.
 - Do not use information that does not exist in the data.
 
 Demographic and Statistical Data:
@@ -359,7 +360,7 @@ def validate_output(state: AgentState) -> AgentState:
     logger.info(f"Validation attempt {state['current_attempt'] + 1}")
     validation_agent = OpenAIAgent(
         name="validation_agent",
-        system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. If you find issues, specify which sections need to be rerun. If all is well, include the word 'APPROVED' in your response."""
+        system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. If you find issues, specify which sections need to be rerun. Return APPROVED if all is well. Only respond with one sentence."""
     )
     
     all_stats = {
@@ -370,12 +371,13 @@ def validate_output(state: AgentState) -> AgentState:
     }
     
     validation_prompt = f"Summaries:\n{json.dumps({
-        'section_summaries': {f'section{i}': state[f'section{i}_summary'] for i in range(1, 5)},
-        'combined_summary': state['combined_summary'],
-        'country_analysis': state['country_analysis'],
-        'country_summary': state['country_summary'],
-        'personas': state['persona_outputs']
-    }, indent=2)}\n\nStatistics:\n{json.dumps(all_stats, indent=2)}"
+        'nothing': 'nothing',
+        #'section_summaries': {f'section{i}': state[f'section{i}_summary'] for i in range(1, 5)},
+        #'combined_summary': state['combined_summary'],
+        #'country_analysis': state['country_analysis'],
+        #'country_summary': state['country_summary'],
+        #'personas': state['persona_outputs']
+    }, indent=2)} \n\nStatistics:\n{json.dumps(all_stats, indent=2)}"
     
     state['validation'] = validation_agent.generate_reply([{'role': 'user', 'content': validation_prompt}])
     

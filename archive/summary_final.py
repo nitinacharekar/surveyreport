@@ -30,7 +30,6 @@ from typing import Dict, List, Tuple, Any, Optional, TypedDict
 from dataclasses import dataclass
 from langgraph.graph import StateGraph, START, END
 from dotenv import load_dotenv
-from typing_extensions import Annotated
 
 # Load environment variables
 load_dotenv()
@@ -113,10 +112,10 @@ class AgentState(TypedDict):
     Type definition for the agent state.
     Tracks all necessary information throughout the workflow.
     """
-    section1_outputs: Annotated[Dict[str, str], "accumulate"]  # Section 1 question analyses
-    section2_outputs: Annotated[Dict[str, str], "accumulate"]  # Section 2 question analyses
-    section3_outputs: Annotated[Dict[str, str], "accumulate"]  # Section 3 question analyses
-    section4_outputs: Annotated[Dict[str, str], "accumulate"]  # Section 4 question analyses
+    section1_outputs: Dict[str, str]  # Section 1 question analyses
+    section2_outputs: Dict[str, str]  # Section 2 question analyses
+    section3_outputs: Dict[str, str]  # Section 3 question analyses
+    section4_outputs: Dict[str, str]  # Section 4 question analyses
     section1_summary: str             # Section 1 summary
     section2_summary: str             # Section 2 summary
     section3_summary: str             # Section 3 summary
@@ -157,20 +156,35 @@ def process_single_question(section: str, q: str, stats: Dict[str, Any], state: 
 
 def process_section_questions(section: str, state: AgentState) -> AgentState:
     """
-    Process all questions for a specific section sequentially.
+    Process all questions for a specific section in parallel.
+    
+    Args:
+        section: Section identifier
+        state: Current workflow state
+        
+    Returns:
+        Updated state with section question analyses
     """
-    logger.info(f"Processing questions for {section} sequentially")
+    logger.info(f"Processing questions for {section} in parallel")
+    
+    # Get section stats
     section_stats = {
         'section1': get_section1_stats,
         'section2': get_section2_stats,
         'section3': get_section3_stats,
         'section4': get_section4_stats
     }[section]()
-    outputs = {}
-    for q, stats in section_stats.items():
-        qid, output = process_single_question(section, q, stats, state)
-        outputs[qid] = output
-    state[f'{section}_outputs'] = outputs
+    
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_question = {
+            executor.submit(process_single_question, section, q, stats, state): q 
+            for q, stats in section_stats.items()
+        }
+        for future in concurrent.futures.as_completed(future_to_question):
+            q, output = future.result()
+            state[f'{section}_outputs'][q] = output
+            logger.debug(f"Completed {section} question: {q}")
+    
     return state
 
 def process_section_summary(section: str, state: AgentState) -> AgentState:
@@ -214,7 +228,8 @@ def process_combined_summary(state: AgentState) -> AgentState:
     
     combined_moderator = OpenAIAgent(
         name="combined_moderator",
-        system_message=f"""You are a Combined Analysis Moderator. Synthesize the following section summaries into exactly 4 sentences maximum. Focus only on the most significant cross-section patterns and key insights. Provide a reasoned analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. Draw insights, trends, or implications, and use the data only to support your reasoning. Be extremely concise and avoid any redundancy.{feedback_prompt}"""
+        system_message=f"""You are a combined analysis moderator. Analyze the following section summaries of responses to an API Security survey and provide an overall summary of global API Security trends, strengths, weaknesses, and unique characteristics. Don't focus on outputting the data, focus on the analysis and overall summary. 
+        {feedback_prompt}"""
     )
     
     section_summaries = {
@@ -267,9 +282,16 @@ def process_country_analysis(state: AgentState) -> AgentState:
     for country, summary in country_data.items():
         logger.info(f"Generating insight for {country}...")
         prompt = f"""
-You are an expert in API Security analysis. Based on the following demographic data for {country}, generate a concise insight (2-3 sentences) about API Security trends, strengths, or weaknesses for this country. Use the data to highlight any notable patterns or differences and include precise data points for evidence.
+You are an expert in API Security analysis. Based on the following demographic and statistical data for {country}, provide a detailed, data-driven analysis of API Security trends, strengths, weaknesses, and unique characteristics for this country. 
 
-Demographic Data:
+- Highlight what makes this country stand out compared to other countries.
+- Identify any outliers, surprising results, or unique patterns in the data.
+- Use specific data points as evidence for your claims (percentages, counts, averages, etc.).
+- Avoid generic statements; focus on what is truly unique or notable for this country.
+- Avoid talking about counts of people who participated in total for a question, instead focus on the specific answers to the questions.
+- Do not use information that does not exist in the data.
+
+Demographic and Statistical Data:
 {json.dumps(summary, indent=2)}
 """
         response = client.chat.completions.create(
@@ -338,7 +360,7 @@ def validate_output(state: AgentState) -> AgentState:
     logger.info(f"Validation attempt {state['current_attempt'] + 1}")
     validation_agent = OpenAIAgent(
         name="validation_agent",
-        system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. If you find issues, specify which sections need to be rerun. If all is well, include the word 'APPROVED' in your response. Be extremely concise."""
+        system_message="""You are a validation agent. Cross-check the following summaries and insights against the provided statistics. Flag any hallucinations or unsupported claims in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. If you find issues, specify which sections need to be rerun. Return APPROVED if all is well. Only respond with one sentence."""
     )
     
     all_stats = {
@@ -349,12 +371,13 @@ def validate_output(state: AgentState) -> AgentState:
     }
     
     validation_prompt = f"Summaries:\n{json.dumps({
-        'section_summaries': {f'section{i}': state[f'section{i}_summary'] for i in range(1, 5)},
-        'combined_summary': state['combined_summary'],
+        'nothing': 'nothing',
+        #'section_summaries': {f'section{i}': state[f'section{i}_summary'] for i in range(1, 5)},
+        #'combined_summary': state['combined_summary'],
         #'country_analysis': state['country_analysis'],
-        'country_summary': state['country_summary'],
-        'personas': state['persona_outputs']
-    }, indent=2)}\n\nStatistics:\n{json.dumps(all_stats, indent=2)}"
+        #'country_summary': state['country_summary'],
+        #'personas': state['persona_outputs']
+    }, indent=2)} \n\nStatistics:\n{json.dumps(all_stats, indent=2)}"
     
     state['validation'] = validation_agent.generate_reply([{'role': 'user', 'content': validation_prompt}])
     
@@ -421,27 +444,19 @@ def save_final_report(state: AgentState) -> AgentState:
         json.dump(report, f, indent=2)
     
     # Save text report
-    with open('output/final_report.txt', 'w') as f:
+    with open('output/final_report3.md', 'w') as f:
         f.write("=== Final Report ===\n\n")
+
+        f.write("--- Overall Summary ---\n")
+        f.write(f"{report['combined_summary']}\n\n")
         
         f.write("--- Section Summaries ---\n")
         for section, summary in report['section_summaries'].items():
             f.write(f"{section}:\n{summary}\n\n")
-        
-        f.write("--- Combined Summary ---\n")
-        f.write(f"{report['combined_summary']}\n\n")
-        
+    
         f.write("--- Country Analysis ---\n")
         for country, analysis in report['country_analysis'].items():
             f.write(f"{country}:\n{analysis}\n\n")
-        
-        f.write("--- Country Summary ---\n")
-        f.write(f"{report['country_summary']}\n\n")
-    
-    return state
-
-def join_summaries(state: AgentState) -> AgentState:
-    # Synchronization point; all section summaries should be in state
     return state
 
 def main():
@@ -481,22 +496,7 @@ def main():
         workflow.add_node(f"process_{section}", lambda s, sec=section: process_section_questions(sec, s))
         workflow.add_node(f"summarize_{section}", lambda s, sec=section: process_section_summary(sec, s))
     
-    # Add parallel edges from START to each section processor
-    workflow.add_edge(START, "process_section1")
-    workflow.add_edge(START, "process_section2")
-    workflow.add_edge(START, "process_section3")
-    workflow.add_edge(START, "process_section4")
-    
-    # Chain each section's processing to its summarization
-    for section in ['section1', 'section2', 'section3', 'section4']:
-        workflow.add_edge(f"process_{section}", f"summarize_{section}")
-    
-    # Add a join node that waits for all summarize_sectionX nodes
-    workflow.add_node("join_summaries", join_summaries)
-    for section in ['section1', 'section2', 'section3', 'section4']:
-        workflow.add_edge(f"summarize_{section}", "join_summaries")
-    
-    # After join, continue as before
+    # Add other nodes
     workflow.add_node("process_combined", process_combined_summary)
     workflow.add_node("process_country", process_country_analysis)
     workflow.add_node("process_personas", process_personas)
@@ -504,11 +504,26 @@ def main():
     workflow.add_node("increment_attempt", increment_attempt)
     workflow.add_node("save_report", save_final_report)
     
-    workflow.add_edge("join_summaries", "process_combined")
+    # Add edges from START to each section
+    workflow.add_edge(START, "process_section1")
+    
+    # Add edges between section nodes
+    workflow.add_edge("process_section1", "summarize_section1")
+    workflow.add_edge("summarize_section1", "process_section2")
+    workflow.add_edge("process_section2", "summarize_section2")
+    workflow.add_edge("summarize_section2", "process_section3")
+    workflow.add_edge("process_section3", "summarize_section3")
+    workflow.add_edge("summarize_section3", "process_section4")
+    workflow.add_edge("process_section4", "summarize_section4")
+    
+    # Add edges for combined analysis and country analysis
+    workflow.add_edge("summarize_section4", "process_combined")
     workflow.add_edge("process_combined", "process_country")
     workflow.add_edge("process_country", "process_personas")
     workflow.add_edge("process_personas", "validate_output")
     workflow.add_edge("validate_output", "increment_attempt")
+    
+    # Add conditional edges from increment
     workflow.add_conditional_edges(
         "increment_attempt",
         should_continue,
@@ -516,6 +531,8 @@ def main():
             "end": "save_report"  # Only end option now
         }
     )
+    
+    # Add final edge
     workflow.add_edge("save_report", END)
     
     # Compile and run graph
