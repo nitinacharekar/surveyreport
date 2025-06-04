@@ -257,7 +257,7 @@ def process_country_analysis(state: AgentState) -> AgentState:
         'Section4': get_section4_stats(),
     }
 
-    # Aggregate by country using improved logic
+    # Aggregate by country
     country_data = {}
     for section, section_stats in all_section_stats.items():
         for qkey, summary in section_stats.items():
@@ -276,37 +276,74 @@ def process_country_analysis(state: AgentState) -> AgentState:
                     }
     logger.info(f"Countries found: {list(country_data.keys())}")
 
-    # Generate insights for each country using OpenAI
-    insights = {}
+    # Step 1: Each country agent produces its own analysis
+    country_outputs = {}
     client = openai.OpenAI(api_key=OPENAI_API_KEY)
     for country, summary in country_data.items():
         logger.info(f"Generating insight for {country}...")
         prompt = f"""
-You are an expert in API Security analysis. Based on the following demographic and statistical data for {country}, provide a detailed, data-driven analysis of API Security trends, strengths, weaknesses, and unique characteristics for this country. 
+You are the API Security analyst for {country}. Analyze the following data and provide a detailed, data-driven summary of API Security trends, strengths, weaknesses, and unique characteristics for this country.
 
-- Highlight what makes this country stand out compared to other countries.
-- Identify any outliers, surprising results, or unique patterns in the data.
-- Use specific data points as evidence for your claims (percentages, counts, averages, etc.).
-- Avoid generic statements; focus on what is truly unique or notable for this country.
-- Do not use information that does not exist in the data.
-
-Demographic and Statistical Data:
+Data:
 {json.dumps(summary, indent=2)}
 """
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are an expert API Security analyst."},
+                {"role": "system", "content": f"You are the API Security analyst for {country}."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=300,
+            max_tokens=600,
             temperature=0.3
         )
-        insights[country] = response.choices[0].message.content.strip()
-        logger.info(f"Insight for {country}: {insights[country]}")
+        country_outputs[country] = response.choices[0].message.content.strip()
+        logger.info(f"Insight for {country}: {country_outputs[country]}")
+
+    # Step 2: Discussion phase using AutoGen group chat
+    agents = []
+    for country in country_outputs:
+        agent = autogen.AssistantAgent(
+            name=f"{country}_agent",
+            system_message=f"You are the API Security analyst for {country}. Your job is to discuss similarities, differences, and unique findings in your country's API security landscape compared to others."
+        )
+        agents.append(agent)
+
+    moderator = autogen.AssistantAgent(
+        name="Moderator",
+        system_message="You are a global API Security moderator. Your job is to synthesize the discussion into a comprehensive comparative summary, highlighting global trends, regional differences, and notable outliers."
+    )
+
+    groupchat = autogen.GroupChat(agents=agents + [moderator], messages=[], max_round=2)
+    manager = autogen.GroupChatManager(groupchat=groupchat, llm_config={"api_key": OPENAI_API_KEY, "model": "gpt-4o-mini"})
+
+    # Each agent posts its own analysis
+    for country, agent in zip(country_outputs.keys(), agents):
+        groupchat.append_message({
+            "role": "assistant",
+            "name": agent.name,
+            "content": country_outputs[country]
+        })
+
+    # Moderator starts the synthesis
+    groupchat.append_message({
+        "role": "assistant",
+        "name": moderator.name,
+        "content": "Please discuss similarities and differences between countries, then synthesize a comparative summary."
+    })
+
+    # Run the group chat
+    discussion = manager.run()
+
+    # Extract the moderator's final synthesis
+    final_comparative = ""
+    for msg in groupchat.messages[::-1]:
+        if msg["name"] == "Moderator":
+            final_comparative = msg["content"]
+            break
 
     # Store in state
-    state['country_analysis'] = insights
+    state['country_analysis'] = country_outputs
+    state['country_summary'] = final_comparative
     return state
 
 def process_personas(state: AgentState) -> AgentState:
@@ -415,12 +452,6 @@ def increment_attempt(state: AgentState) -> AgentState:
 def save_final_report(state: AgentState) -> AgentState:
     """
     Save the final report to a JSON file and a text file.
-    
-    Args:
-        state: Current workflow state
-        
-    Returns:
-        Updated state
     """
     logger.info("Saving final report")
     
@@ -441,20 +472,19 @@ def save_final_report(state: AgentState) -> AgentState:
     with open('output/final_report.json', 'w') as f:
         json.dump(report, f, indent=2)
     
-    # Save text report
+    # Save text/markdown report
     with open('output/final_report3.md', 'w') as f:
         f.write("=== Final Report ===\n\n")
-
         f.write("--- Overall Summary ---\n")
         f.write(f"{report['combined_summary']}\n\n")
-        
         f.write("--- Section Summaries ---\n")
         for section, summary in report['section_summaries'].items():
             f.write(f"{section}:\n{summary}\n\n")
-    
         f.write("--- Country Analysis ---\n")
         for country, analysis in report['country_analysis'].items():
             f.write(f"{country}:\n{analysis}\n\n")
+        f.write("--- Country Comparative Summary ---\n")
+        f.write(f"{report['country_summary']}\n\n")
     return state
 
 def main():

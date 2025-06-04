@@ -8,6 +8,7 @@ cachetools==5.5.2
 certifi==2025.4.26
 charset-normalizer==3.4.2
 diskcache==5.6.3
+distro==1.9.0
 docker==7.1.0
 et_xmlfile==2.0.0
 google==3.0.0
@@ -25,6 +26,7 @@ httpcore==1.0.9
 httplib2==0.22.0
 httpx==0.28.1
 idna==3.10
+jiter==0.10.0
 jsonpatch==1.33
 jsonpointer==3.0.0
 langchain-core==0.3.63
@@ -34,6 +36,7 @@ langgraph-prebuilt==0.2.2
 langgraph-sdk==0.1.70
 langsmith==0.3.43
 numpy==2.2.6
+openai==1.83.0
 openpyxl==3.1.5
 orjson==3.10.18
 ormsgpack==1.10.0
@@ -43,6 +46,7 @@ proto-plus==1.26.1
 protobuf==5.29.5
 pyasn1==0.6.1
 pyasn1_modules==0.4.2
+pyautogen==0.9.0
 pydantic==2.11.5
 pydantic_core==2.33.2
 pyparsing==3.2.3

@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from dotenv import load_dotenv
 import openai
+import autogen
 
 # Load environment variables
 load_dotenv()
@@ -88,18 +89,95 @@ def main():
     print("Aggregating by country...")
     country_data = aggregate_demographic_by_country(all_section_stats)
     print(f"Countries found: {list(country_data.keys())}")
-    insights = {}
+    country_outputs = {}
     print("Generating insights for each country...")
     for country, summary in country_data.items():
         print(f"Generating insight for {country}...")
-        insights[country] = generate_insights_for_country(country, summary)
-        print(f"Insight for {country}: {insights[country]}")
+        country_outputs[country] = generate_insights_for_country(country, summary)
+        print(f"Insight for {country}: {country_outputs[country]}")
     # Save insights to file
     output_path = Path("output/country_insights.json")
     output_path.parent.mkdir(exist_ok=True)
     with open(output_path, "w") as f:
-        json.dump(insights, f, indent=2)
+        json.dump(country_outputs, f, indent=2)
     print(f"Insights saved to {output_path}")
+
+    # After generating country_outputs, run an AutoGen group chat for discussion and synthesis
+    agents = []
+    for country in country_outputs:
+        agent = autogen.AssistantAgent(
+            name=f"{country}_agent",
+            system_message=f"You are the API Security analyst for {country}. Your job is to discuss similarities, differences, and unique findings in your country's API security landscape compared to others."
+        )
+        agents.append(agent)
+
+    moderator = autogen.AssistantAgent(
+        name="Moderator",
+        system_message="You are a global API Security moderator. Your job is to synthesize the discussion into a comprehensive comparative summary, highlighting global trends, regional differences, and notable outliers."
+    )
+
+    groupchat = autogen.GroupChat(agents=agents + [moderator], messages=[], max_round=1)
+    manager = autogen.GroupChatManager(groupchat=groupchat, llm_config={"api_key": OPENAI_API_KEY, "model": "gpt-4o-mini"})
+
+    # Each agent posts its own analysis
+    for country, agent in zip(country_outputs.keys(), agents):
+        groupchat.messages.append({
+            "role": "assistant",
+            "name": agent.name,
+            "content": country_outputs[country]
+        })
+
+    # Moderator starts the synthesis
+    groupchat.messages.append({
+        "role": "assistant",
+        "name": moderator.name,
+        "content": "Please discuss similarities and differences between countries, then synthesize a comparative summary."
+    })
+
+    # Run the group chat
+    discussion = manager.run()
+
+    # Extract the moderator's final synthesis
+    final_comparative = ""
+    for msg in groupchat.messages[::-1]:
+        if msg["name"] == "Moderator":
+            final_comparative = msg["content"]
+            break
+
+    print("=== Moderator's Comparative Summary ===")
+    print(final_comparative)
+
+    # Minimal working example for debugging
+    print("\n=== Minimal Group Chat Debug Example ===")
+    minimal_country_outputs = {
+        "Japan": "Japan has strong API security awareness but low maturity.",
+        "India": "India is investing in API security but faces implementation challenges."
+    }
+    minimal_agents = [
+        autogen.AssistantAgent(name="Japan_agent", system_message="You are the Japan analyst."),
+        autogen.AssistantAgent(name="India_agent", system_message="You are the India analyst.")
+    ]
+    minimal_moderator = autogen.AssistantAgent(
+        name="Moderator",
+        system_message="You are a global API Security moderator. Summarize the above."
+    )
+    minimal_groupchat = autogen.GroupChat(agents=minimal_agents + [minimal_moderator], messages=[], max_round=1)
+    minimal_manager = autogen.GroupChatManager(groupchat=minimal_groupchat, llm_config={"api_key": OPENAI_API_KEY, "model": "gpt-4o-mini"})
+    for country, agent in zip(minimal_country_outputs.keys(), minimal_agents):
+        minimal_groupchat.messages.append({
+            "role": "assistant",
+            "name": agent.name,
+            "content": minimal_country_outputs[country]
+        })
+    minimal_groupchat.messages.append({
+        "role": "assistant",
+        "name": minimal_moderator.name,
+        "content": "Please summarize the above country analyses."
+    })
+    minimal_discussion = minimal_manager.run()
+    print("\n=== All Group Chat Messages ===")
+    for msg in minimal_groupchat.messages:
+        print(msg)
 
 if __name__ == "__main__":
     main() 
