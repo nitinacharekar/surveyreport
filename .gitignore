@@ -35,8 +35,6 @@ ENV/
 # Logs
 *.log
 
-# Output files
-output/
 
 # Jupyter Notebook
 .ipynb_checkpoints
