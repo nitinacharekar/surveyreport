@@ -7,6 +7,7 @@ import os
 # Add the project root to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from statistical_analysis.utils.demographic_analysis import add_demographic_summary
+from statistical_analysis.utils.stats_utils import calculate_stats
 
 def analyze_q8(file_path: str):
     df = pd.read_excel(file_path)
@@ -25,31 +26,6 @@ def analyze_q8(file_path: str):
 
     # Total responses
     total_responses = len(df)
-    
-    def calculate_stats(series):
-        # Calculate value counts for categorical data
-        value_counts = series.value_counts()
-        total = value_counts.sum()
-        
-        # Create stats dictionary with counts and percentages
-        stats = {
-            'distribution': {
-                str(k): {
-                    'count': int(v),
-                    'percentage': round((v / total) * 100, 2)
-                } for k, v in value_counts.items()
-            },
-            'total_responses': int(total)
-        }
-        
-        # Add ranking based on count
-        sorted_items = sorted(stats['distribution'].items(), 
-                            key=lambda x: x[1]['count'], 
-                            reverse=True)
-        for rank, (key, _) in enumerate(sorted_items, 1):
-            stats['distribution'][key]['rank'] = rank
-            
-        return stats
     
     # Calculate statistics for each AIML type
     aiml_stats = {}

@@ -7,6 +7,7 @@ import os
 # Add the project root to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from statistical_analysis.utils.demographic_analysis import add_demographic_summary
+from statistical_analysis.utils.stats_utils import calculate_stats
 
 def analyze_q26(file_path: str):
     df = pd.read_excel(file_path)
@@ -26,14 +27,9 @@ def analyze_q26(file_path: str):
     total_selected = df[answer_col].sum()
     percent_selected = (total_selected / total_responses) * 100
 
-    # Breakdown by risk
-    risk_stats = df.groupby(risk_col)[answer_col].agg(['sum', 'count', 'mean'])
-    risk_stats = risk_stats.rename(columns={'sum': 'selected_count', 'count': 'total', 'mean': 'average'})
-    risk_stats = risk_stats.sort_values('selected_count', ascending=False)
-    risk_stats['rank'] = range(1, len(risk_stats) + 1)
-    risk_stats['percent_contribution'] = (risk_stats['selected_count'] / risk_stats['selected_count'].sum() * 100).round(2)
-    risk_stats['cumulative_percent_contribution'] = risk_stats['percent_contribution'].cumsum().round(2)
-    risk_stats = risk_stats.reset_index().to_dict(orient='records')
+    # Calculate stats for each risk (where answer_col == 1)
+    filtered = df[df[answer_col] == 1]
+    risk_stats = calculate_stats(filtered[risk_col])
 
     summary = {
         'question_text': '26 Select the top 3 OWASP API security risks your organization is most concerned about',

@@ -8,6 +8,7 @@ import numpy as np
 # Add the project root to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from statistical_analysis.utils.demographic_analysis import add_demographic_summary
+from statistical_analysis.utils.stats_utils import calculate_stats
 
 def analyze_q27(file_path: str):
     df = pd.read_excel(file_path)
@@ -26,16 +27,15 @@ def analyze_q27(file_path: str):
     stats = {}
     total_sum = 0
     for col in sub_questions:
-        col_sum = df[col].sum()
-        total_sum += col_sum
         stats[col] = {
+            'stats': calculate_stats(df[col]),
             'mean': df[col].mean(),
             'median': df[col].median(),
             'mode': int(df[col].mode().iloc[0]) if not df[col].mode().empty else None,
             'std': df[col].std(),
-            'distribution': {str(k): int(v) for k, v in df[col].value_counts().sort_index().to_dict().items()},
-            'sum': col_sum
+            'sum': df[col].sum()
         }
+        total_sum += df[col].sum()
     # Ranking and % contribution
     means = {k: v['mean'] for k, v in stats.items()}
     contributions = {k: stats[k]['sum'] / total_sum * 100 if total_sum else 0 for k in stats.keys()}

@@ -351,7 +351,7 @@ def validate_output(state: AgentState) -> AgentState:
     validation_prompt = f"Summaries:\n{json.dumps({
         'section_summaries': {f'section{i}': state[f'section{i}_summary'] for i in range(1, 5)},
         'combined_summary': state['combined_summary'],
-        'country_analysis': state['country_analysis'],
+        #'country_analysis': state['country_analysis'],
         'country_summary': state['country_summary'],
         'personas': state['persona_outputs']
     }, indent=2)}\n\nStatistics:\n{json.dumps(all_stats, indent=2)}"

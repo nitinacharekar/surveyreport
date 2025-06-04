@@ -6,6 +6,7 @@ import os
 # Add the project root to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from statistical_analysis.utils.demographic_analysis import add_demographic_summary
+from statistical_analysis.utils.stats_utils import calculate_stats
 
 def analyze_q15(file_path: str):
     df = pd.read_excel(file_path)
@@ -25,17 +26,6 @@ def analyze_q15(file_path: str):
     # Total responses
     total_responses = len(df)
     
-    def calculate_stats(series):
-        stats = series.value_counts()
-        stats_df = pd.DataFrame({
-            'value': stats.index,
-            'count': stats.values
-        })
-        stats_df['rank'] = range(1, len(stats_df) + 1)
-        stats_df['percent_contribution'] = (stats_df['count'] / stats_df['count'].sum() * 100).round(2)
-        stats_df['cumulative_percent_contribution'] = stats_df['percent_contribution'].cumsum().round(2)
-        return stats_df.to_dict(orient='records')
-    
     # Calculate statistics for each solution
     solution_stats = {}
     for col in solution_cols:
@@ -43,16 +33,6 @@ def analyze_q15(file_path: str):
 
     # Calculate averages
     solution_averages = {col: round(df[col].mean(), 2) for col in solution_cols}
-
-    # Calculate breakdown by demographic factors
-    demo_breakdowns = {}
-    for demo in demo_cols:
-        if demo in df.columns:
-            demo_stats = {}
-            for col in solution_cols:
-                # Convert DataFrame to dictionary for JSON serialization
-                demo_stats[col] = df.groupby([demo, col]).size().unstack(fill_value=0).to_dict()
-            demo_breakdowns[demo] = demo_stats
 
     summary = {
         'question_text': '15How effective are your current solutions in addressing the following API Access Control challenges within your organization?',

@@ -23,7 +23,6 @@ def calculate_demographic_stats(df: pd.DataFrame,
             continue
             
         demo_stats[demo_col] = {
-            'overall_distribution': df[demo_col].value_counts().to_dict(),
             'breakdowns': {}
         }
         
@@ -36,8 +35,7 @@ def calculate_demographic_stats(df: pd.DataFrame,
             if pd.api.types.is_numeric_dtype(df[value_col]):
                 demo_stats[demo_col]['breakdowns'][value_col] = {
                     'mean_by_demo': df.groupby(demo_col)[value_col].mean().round(2).to_dict(),
-                    'std_by_demo': df.groupby(demo_col)[value_col].std().round(2).to_dict(),
-                    'count_by_demo': df.groupby(demo_col)[value_col].count().to_dict()
+                    'std_by_demo': df.groupby(demo_col)[value_col].std().round(2).to_dict()
                 }
             # For categorical columns, calculate cross-tabulation
             else:

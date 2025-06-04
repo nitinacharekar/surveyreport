@@ -7,6 +7,7 @@ import os
 # Add the project root to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from statistical_analysis.utils.demographic_analysis import add_demographic_summary
+from statistical_analysis.utils.stats_utils import calculate_stats
 
 def analyze_q0(file_path: str):
     """
@@ -32,15 +33,7 @@ def analyze_q0(file_path: str):
     total_responses = len(df)
     
     # Calculate role distribution with standard stats
-    role_stats = df[role_col].value_counts()
-    stats_df = pd.DataFrame({
-        'value': role_stats.index,
-        'count': role_stats.values
-    })
-    stats_df['rank'] = range(1, len(stats_df) + 1)
-    stats_df['percent_contribution'] = (stats_df['count'] / stats_df['count'].sum() * 100).round(2)
-    stats_df['cumulative_percent_contribution'] = stats_df['percent_contribution'].cumsum().round(2)
-    role_stats = stats_df.to_dict(orient='records')
+    role_stats = calculate_stats(df[role_col])
 
     summary = {
         'question_text': '0 Which of the following most accurately reflects your job title and responsibilities?',
