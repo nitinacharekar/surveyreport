@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 15: "How effective are your current solutions in addressing the following API Access Control challenges within your organization?".
 
 This script processes survey responses where organizations rate the effectiveness of their
@@ -9,7 +9,7 @@ It calculates:
 - Overall statistics for each solution's effectiveness using `calculate_stats`.
 - Average effectiveness ratings for each solution.
 - Demographic breakdowns of effectiveness ratings based on specified demographic columns.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

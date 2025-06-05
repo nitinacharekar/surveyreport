@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 28: "What security measures does your organization currently have in place to protect APIs?".
 
 This script reads an Excel file where survey respondents indicate which security measures
@@ -9,12 +9,13 @@ Note: The script uses a hardcoded string for `measure_col` which is presumed to 
 column in the Excel sheet that lists the names/types of security measures. If this is not
 the actual column name, the script will fail or produce incorrect results.
 The `Answers` column is assumed to indicate if a measure is selected (e.g., with a 1).
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path
 import sys
 import os
+import traceback
 
 # Add the project root to Python path for utility imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -76,7 +77,7 @@ def analyze_q28(file_path: str) -> dict:
     # Calculate average selections per type of measure (if meaningful for the data structure)
     # This assumes `measure_distribution_stats` gives a count for each type of measure.
     # The average would be total selections divided by the number of unique measure types that were selected at least once.
-    num_unique_selected_measures = len(measure_distribution_stats.get('counts', {})) # Assuming calculate_stats returns a dict with a 'counts' sub-dict
+    num_unique_selected_measures = len(measure_distribution_stats) # Corrected: calculate_stats returns a list of dicts
     avg_selections_per_measure_type = round(total_selected_entries / num_unique_selected_measures, 2) if num_unique_selected_measures > 0 else 0
 
     summary = {
@@ -111,7 +112,9 @@ if __name__ == "__main__":
             print(f"Error analyzing file {default_data_file}: Missing column - {e}")
             q28_results = {"error": f"Missing column: {e}"}
         except Exception as e:
+            error_trace = traceback.format_exc()
             print(f"An unexpected error occurred while analyzing {default_data_file}: {e}")
-            q28_results = {"error": str(e)}
+            print(f"Full traceback:\n{error_trace}")
+            q28_results = {"error": str(e), "traceback": error_trace}
     
     print(json.dumps(q28_results, indent=2))

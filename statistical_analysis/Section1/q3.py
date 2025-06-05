@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 3: "Who has primary responsibility for API security in your organization?".
 
 This script processes survey responses from a single 'Answers' column, which is expected
@@ -14,7 +14,7 @@ The script calculates:
 
 Note: The 'average' for responsibility data is generally not interpretable and will likely result in
 "Non-numeric or all NaN data", which is expected.
-'''
+"""
 import pandas as pd
 import json
 import os

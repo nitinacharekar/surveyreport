@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 7: "How frequently does your organization use the following AI/ML APIs?".
 (Note: The data file associated with this in its `__main__` block is named for Question 6 - '6 API Usage in AIML Implementations- Frequency.xlsx')
 
@@ -10,7 +10,7 @@ It calculates:
 - Overall statistics for each AI/ML API type's frequency of use using `calculate_stats`.
 - Average frequency rating for each AI/ML API type.
 - Demographic breakdowns of these ratings based on specified demographic columns.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

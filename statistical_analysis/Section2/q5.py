@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 5: "What are the predominant API styles used in your organization?".
 
 This script processes survey responses where organizations indicate the predominance of various
@@ -9,7 +9,7 @@ It calculates:
 - Overall statistics for each API style's predominance using `calculate_stats`.
 - Average predominance rating for each API style.
 - Demographic breakdowns of these ratings based on specified demographic columns.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

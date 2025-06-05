@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 1: "How would you rate the strategic importance of API security to your organization?".
 
 This script processes survey responses where organizations rate the strategic importance of API security
@@ -9,7 +9,7 @@ It calculates:
 - Overall statistics for each rated dimension using `calculate_stats`.
 - Average numeric ratings for each dimension.
 - Demographic breakdowns of ratings based on specified demographic columns.
-'''
+"""
 import pandas as pd
 import json
 import os

@@ -1,9 +1,11 @@
-\'\'\'\nAnalyzes data for Question 27: \"How ready is your organization in mitigating these risks?\".\n\nThis script processes an Excel file where multiple columns represent sub-questions\n(identified by starting with \'API\' and containing \':\') related to organizational\nreadiness in mitigating various API security risks. For each sub-question, it calculates\na suite of statistics including mean, median, mode, sum, standard deviation, rank,\nand percentage contribution to a total sum.\n\nIt includes logic to convert NumPy data types to native Python types for JSON\nserialization and performs a demographic breakdown for all sub-questions.\n\'\'\'\nimport pandas as pd
+"""Analyzes data for Question 27: \"How ready is your organization in mitigating these risks?\".\n\nThis script processes an Excel file where multiple columns represent sub-questions\n(identified by starting with \'API\' and containing \':\') related to organizational\nreadiness in mitigating various API security risks. For each sub-question, it calculates\na suite of statistics including mean, median, mode, sum, standard deviation, rank,\nand percentage contribution to a total sum.\n\nIt includes logic to convert NumPy data types to native Python types for JSON\nserialization and performs a demographic breakdown for all sub-questions.\n"""
+import pandas as pd
 import json
 from pathlib import Path
 import sys
 import os
 import numpy as np
+import traceback
 
 # Add the project root to Python path for utility imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
@@ -11,8 +13,8 @@ from statistical_analysis.utils.demographic_analysis import add_demographic_summ
 from statistical_analysis.utils.stats_utils import calculate_stats
 
 def analyze_q27(file_path: str) -> dict:
-    \"\"\"
-    Analyzes organizational readiness in mitigating API security risks (Question 27).\n\n    The function reads data from an Excel file, identifies sub-questions based on column\n    name patterns (\'API*\':\'), and for each, calculates:\n    - Basic descriptive statistics (via `calculate_stats`).\n    - Mean, median, mode, standard deviation, and sum.\n    - Rank (based on mean) and percentage contribution to the total sum of all sub-question responses.\n\n    It also attempts to extract a general question text from a \'Questions\' column if present.\n    NumPy data types are converted to Python native types for JSON compatibility.\n    Finally, it adds a demographic analysis for all identified sub-questions.\n\n    Args:\n        file_path (str): Absolute or relative path to the Excel file.\n\n    Returns:\n        dict: A dictionary containing the analysis summary, including:\n              - \'question_text\': The text of the survey question (or a fallback).\n              - \'main_stats\': Contains \'sub_question_stats\' (a dictionary where each key\n                is a sub-question and value is its detailed statistics) and \'overall_average\'.\n              - \'demographic_analysis\': Demographic breakdown for all sub-questions.\n    \"\"\"
+    """
+    Analyzes organizational readiness in mitigating API security risks (Question 27).\n\n    The function reads data from an Excel file, identifies sub-questions based on column\n    name patterns (\'API*\':\'), and for each, calculates:\n    - Basic descriptive statistics (via `calculate_stats`).\n    - Mean, median, mode, standard deviation, and sum.\n    - Rank (based on mean) and percentage contribution to the total sum of all sub-question responses.\n\n    It also attempts to extract a general question text from a \'Questions\' column if present.\n    NumPy data types are converted to Python native types for JSON compatibility.\n    Finally, it adds a demographic analysis for all identified sub-questions.\n\n    Args:\n        file_path (str): Absolute or relative path to the Excel file.\n\n    Returns:\n        dict: A dictionary containing the analysis summary, including:\n              - \'question_text\': The text of the survey question (or a fallback).\n              - \'main_stats\': Contains \'sub_question_stats\' (a dictionary where each key\n                is a sub-question and value is its detailed statistics) and \'overall_average\'.\n              - \'demographic_analysis\': Demographic breakdown for all sub-questions.\n    """
     df = pd.read_excel(file_path)
     # Clean column names by stripping leading/trailing whitespace
     df.columns = df.columns.str.strip()
@@ -41,18 +43,26 @@ def analyze_q27(file_path: str) -> dict:
     sub_q_stats = {}
     total_sum_of_responses = 0
     for col in sub_questions:
+        # Get the data for the column, ensuring it's a Series
+        # (in case of duplicate column names in Excel, df[col] would be a DataFrame)
+        data_series = df[col]
+        if isinstance(data_series, pd.DataFrame):
+            # Duplicate column name found. Using the data from the first instance.
+            # A warning could be logged here in a more production-oriented script.
+            data_series = data_series.iloc[:, 0]
+
         # Ensure data is numeric, coercing errors to NaN. Otherwise, .mean() etc. might fail.
-        df[col] = pd.to_numeric(df[col], errors='coerce')
+        data_series = pd.to_numeric(data_series, errors='coerce')
         
-        col_mean = df[col].mean()
-        col_median = df[col].median()
-        col_mode_series = df[col].mode()
+        col_mean = data_series.mean()
+        col_median = data_series.median()
+        col_mode_series = data_series.mode()
         col_mode = int(col_mode_series.iloc[0]) if not col_mode_series.empty and pd.notna(col_mode_series.iloc[0]) else None
-        col_std = df[col].std()
-        col_sum = df[col].sum()
+        col_std = data_series.std()
+        col_sum = data_series.sum()
 
         sub_q_stats[col] = {
-            'stats': calculate_stats(df[col].dropna()), # calculate_stats usually expects a Series without NaNs for some ops
+            'stats': calculate_stats(data_series.dropna()), # calculate_stats usually expects a Series without NaNs for some ops
             'mean': col_mean if pd.notna(col_mean) else None,
             'median': col_median if pd.notna(col_median) else None,
             'mode': col_mode,
@@ -96,9 +106,21 @@ def analyze_q27(file_path: str) -> dict:
 
     for outer_key, inner_dict in sub_q_stats.items():
         for field_key, field_val in inner_dict.items():
-            if field_key == 'stats' and isinstance(field_val, dict): # 'stats' is a dict from calculate_stats
-                sub_q_stats[outer_key][field_key] = {sub_k: to_py_type(sub_v) for sub_k, sub_v in field_val.items()}
-            else:
+            if field_key == 'stats': # field_val is the list of dicts from calculate_stats
+                processed_stats_list = []
+                if isinstance(field_val, list): # Ensure it's a list before iterating
+                    for stat_item_dict in field_val:
+                        processed_item_dict = {}
+                        if isinstance(stat_item_dict, dict): # Ensure item in list is a dict
+                            for sub_k, sub_v in stat_item_dict.items():
+                                processed_item_dict[sub_k] = to_py_type(sub_v)
+                        else: # Handle case where item in list is not a dict (e.g. if calculate_stats changes)
+                            processed_item_dict = to_py_type(stat_item_dict) # Try to convert it directly
+                        processed_stats_list.append(processed_item_dict)
+                else: # Handle case where 'stats' field is not a list (e.g. if calculate_stats changes)
+                    processed_stats_list = to_py_type(field_val) # Try to convert it directly
+                sub_q_stats[outer_key][field_key] = processed_stats_list
+            else: # For 'mean', 'median', etc. field_val should be scalar or None
                 sub_q_stats[outer_key][field_key] = to_py_type(field_val)
 
     # Calculate overall average across all sub_questions' means
@@ -130,7 +152,9 @@ if __name__ == "__main__":
         try:
             q27_results = analyze_q27(default_data_file)
         except Exception as e:
+            error_trace = traceback.format_exc()
             print(f"Error analyzing file {default_data_file}: {e}")
-            q27_results = {"error": str(e)}
+            print(f"Full traceback:\n{error_trace}")
+            q27_results = {"error": str(e), "traceback": error_trace}
     
     print(json.dumps(q27_results, indent=2))

@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 0: "What is your role in your organization?".
 
 This script processes survey responses from a single 'Answers' column, which is expected
@@ -15,7 +15,7 @@ The script calculates:
 
 Note: The 'average' calculation for roles is generally not meaningful and will likely result
 in "Non-numeric or all NaN data" or similar, which is the expected behavior if roles are purely textual.
-'''
+"""
 import pandas as pd
 import json
 import os

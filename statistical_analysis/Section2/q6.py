@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 6: "How is your organization currently using APIs in its AI/ML implementations?".
 
 This script processes survey responses where organizations indicate their usage of APIs
@@ -9,7 +9,7 @@ It calculates:
 - Overall statistics for each AI/ML API usage purpose using `calculate_stats`.
 - Average usage rating for each purpose.
 - Demographic breakdowns of these ratings based on specified demographic columns.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

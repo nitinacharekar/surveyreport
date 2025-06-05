@@ -1,4 +1,4 @@
-'''
+"""
 Module for aggregating and providing statistical analysis results for Section 4 of the survey.
 
 This script coordinates the analysis of individual questions within Section 4
@@ -8,7 +8,7 @@ from their respective modules.
 
 The `get_section4_stats()` function orchestrates these calls using `pathlib.Path`
 for robust path construction to data files located in `data/Section 4/`.
-'''
+"""
 import os
 import json # Added for pretty printing in main
 from pathlib import Path

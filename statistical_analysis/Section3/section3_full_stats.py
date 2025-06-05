@@ -1,4 +1,4 @@
-'''
+"""
 Module for aggregating and providing statistical analysis results for Section 3 of the survey.
 
 This script serves as the central point for collecting all analysis data from Section 3.
@@ -12,7 +12,7 @@ to be located in subdirectories within `data/Section 3/` (e.g., `data/Section 3/
 The results from all analyzed questions are compiled into a single dictionary.
 
 Note: As of the current version, the analysis for q21 is commented out in the `stats` dictionary.
-'''
+"""
 import os
 from pathlib import Path
 import json # For pretty printing in the main block

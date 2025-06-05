@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 16: "How concerning are the following API Runtime Protection challenges for your organization?".
 
 This script processes survey responses where organizations rate their concern levels
@@ -9,7 +9,7 @@ It calculates:
 - Overall statistics for each challenge's concern level using `calculate_stats`.
 - Average concern ratings for each challenge.
 - Demographic breakdowns of concern ratings based on specified demographic columns.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

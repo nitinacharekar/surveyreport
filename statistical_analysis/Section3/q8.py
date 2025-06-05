@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 8: "For each of the following API security aspects, please rate how concerning they are for your organization?".
 
 This script reads an Excel file containing survey responses where organizations rate their
@@ -6,7 +6,7 @@ concern levels for various API security aspects (e.g., API Discovery & Mapping, 
 It calculates overall statistics and average concern ratings for each aspect. The script includes
 a helper function `extract_numeric_rating` to parse numeric values from rating strings
 (e.g., "1 - Not Concerning"). Demographic breakdowns are also performed.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 2: "How would you characterize your organization's current API security readiness/maturity?".
 
 This script processes survey responses where organizations rate their API security readiness/maturity
@@ -10,7 +10,7 @@ It calculates:
 - Overall statistics for each rated dimension using `calculate_stats`.
 - Average numeric ratings for each dimension.
 - Demographic breakdowns of ratings based on specified demographic columns.
-'''
+"""
 import pandas as pd
 import json
 import os

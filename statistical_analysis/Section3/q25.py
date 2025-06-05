@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 25, focusing on the effectiveness of solutions for Regulatory Compliance.
 
 This script processes survey responses from a single 'Answers' column, which is expected
@@ -11,7 +11,7 @@ The script calculates:
 
 Note: The interpretation of the 'Answers' column and the meaningfulness of its average
 depend on the specific data collected (e.g., numeric ratings vs. categorical descriptors of effectiveness).
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

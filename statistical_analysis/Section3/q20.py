@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 20: "Which stage of the API lifecycle would benefit most from the following discovery method in your organization?".
 
 This script processes survey responses from a single 'Answers' column, which is expected
@@ -15,7 +15,7 @@ The script calculates:
 Note: The effectiveness of calculating an 'average' on potentially categorical data depends on the
 exact nature and encoding of the 'Answers' column. If it's purely categorical (e.g., text names of stages),
 the average might not be meaningful.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

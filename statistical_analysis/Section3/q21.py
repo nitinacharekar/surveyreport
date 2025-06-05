@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 21: "How has code-based discovery improved your organization's API security?".
 
 This script processes survey responses from a single 'Answers' column. The data in this column
@@ -15,7 +15,7 @@ The script calculates:
 Note: The meaningfulness of an 'average' depends on the nature of the 'Answers' column. If it contains
 qualitative text, the average may not be directly interpretable unless the text represents an ordinal scale
 that has been numerically encoded.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

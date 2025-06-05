@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 9: "For each of the following API security aspects, please rate how effective your current solutions are for your organization?".
 
 This script processes survey responses where organizations rate the effectiveness of their
@@ -6,7 +6,7 @@ current solutions for various API security aspects (e.g., API Discovery & Mappin
 It calculates overall statistics and average effectiveness ratings for each aspect. The script uses
 a helper function `extract_numeric_rating` to parse numeric values from rating strings
 (e.g., "1 - Not Effective"). Demographic breakdowns are also performed.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

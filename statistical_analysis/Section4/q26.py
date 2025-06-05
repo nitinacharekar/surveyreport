@@ -1,5 +1,5 @@
 print("Script q26.py is starting...")
-'''
+"""
 Analyzes data for Question 26: "Select the top 3 OWASP API security risks your organization is most concerned about".
 
 This script reads an Excel file where each row might represent a selection of a specific
@@ -8,7 +8,7 @@ selected and performs a demographic breakdown.
 
 Note: The script identifies the column containing the risk names by its index (df.columns[5]),
 which could be fragile if the Excel sheet structure changes.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

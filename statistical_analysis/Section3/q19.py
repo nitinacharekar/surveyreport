@@ -1,4 +1,4 @@
-'''
+"""
 Analyzes data for Question 19: "How effective are your current solutions in identifying vulnerable and/or undocumented/shadow APIs?".
 
 This script processes survey responses where organizations rate the effectiveness of their current solutions
@@ -9,7 +9,7 @@ It calculates:
 - Overall statistics for each solution's effectiveness using `calculate_stats`.
 - Average effectiveness ratings for each solution.
 - Demographic breakdowns of effectiveness ratings based on specified demographic columns.
-'''
+"""
 import pandas as pd
 import json
 from pathlib import Path

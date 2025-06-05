@@ -1,4 +1,4 @@
-'''
+"""
 Module for aggregating and providing statistical analysis results for Section 2 of the survey.
 
 This script serves as the central point for collecting all analysis data from Section 2.
@@ -10,7 +10,7 @@ The primary function, `get_section2_stats()`, orchestrates calls to these indivi
 analysis functions. It constructs paths to the respective data files, which are expected
 to be located in subdirectories within `data/Section 2/`, relative to the project root.
 The results from all analyzed questions are compiled into a single dictionary.
-'''
+"""
 import os
 import json
 import sys
