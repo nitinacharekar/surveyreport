@@ -15,10 +15,17 @@ from statistical_analysis.utils.stats_utils import calculate_stats
 def analyze_q27(file_path: str) -> dict:
     """
     Analyzes organizational readiness in mitigating API security risks (Question 27).\n\n    The function reads data from an Excel file, identifies sub-questions based on column\n    name patterns (\'API*\':\'), and for each, calculates:\n    - Basic descriptive statistics (via `calculate_stats`).\n    - Mean, median, mode, standard deviation, and sum.\n    - Rank (based on mean) and percentage contribution to the total sum of all sub-question responses.\n\n    It also attempts to extract a general question text from a \'Questions\' column if present.\n    NumPy data types are converted to Python native types for JSON compatibility.\n    Finally, it adds a demographic analysis for all identified sub-questions.\n\n    Args:\n        file_path (str): Absolute or relative path to the Excel file.\n\n    Returns:\n        dict: A dictionary containing the analysis summary, including:\n              - \'question_text\': The text of the survey question (or a fallback).\n              - \'main_stats\': Contains \'sub_question_stats\' (a dictionary where each key\n                is a sub-question and value is its detailed statistics) and \'overall_average\'.\n              - \'demographic_analysis\': Demographic breakdown for all sub-questions.\n    """
-    df = pd.read_excel(file_path)
+    df = pd.read_excel(file_path, sheet_name="Data")
     # Clean column names by stripping leading/trailing whitespace
     df.columns = df.columns.str.strip()
     
+    # Identify metadata and risk columns
+    metadata_cols = ['ID', 'Country', 'Age', 'Gender', 'Category']
+    risk_cols = [col for col in df.columns if col not in metadata_cols]
+
+    # Total responses = number of rows (respondents)
+    total_responses = len(df)
+
     # Identify sub-question columns (e.g.,Likert scale responses for different risk mitigations)
     sub_questions = [col for col in df.columns if col.startswith('API') and ':' in col]
 

@@ -22,73 +22,98 @@ from statistical_analysis.utils.stats_utils import calculate_stats
 
 def analyze_q26(file_path: str) -> dict:
     """
-    Analyzes data on the top 3 OWASP API security risks (Question 26).
+    Analyzes data for Question 26: "Select the top 3 OWASP API security risks 
+    your organization is most concerned about" from an Excel file.
 
-    The function reads data from the specified Excel file. It assumes one column ('Answers')
-    indicates if a risk was selected (e.g., with a 1) and another column (identified by index)
-    contains the name of the risk.
-    It calculates the total selections, percentage selected, and statistics for the distribution
-    of selected risks. Demographic analysis is also performed.
+    The function reads data from a sheet named "Data" in the specified Excel 
+    file. It assumes that each row represents a unique respondent and that the file 
+    contains metadata columns (like 'ID', 'Country', 'Age', 'Gender', 'Category') 
+    and several other columns, each representing a specific OWASP API security risk. 
+    The values in these risk columns (e.g., 1 or 0) indicate whether a respondent 
+    selected that particular risk.
+
+    The analysis calculates:
+    - The total number of responses (respondents).
+    - The overall frequency of selection for each identified OWASP API security risk.
+    - A matrix of risk selections grouped by country, showing the sum of selections 
+      for each risk within each country.
+    - A matrix of risk selections grouped by risk, showing the total selections for 
+      each risk and a further breakdown of these selections by country.
 
     Args:
-        file_path (str): Absolute or relative path to the Excel file.
+        file_path (str): Absolute or relative path to the Excel file 
+                         containing the survey data.
 
     Returns:
-        dict: A dictionary containing the analysis summary, including:
-              - 'question_text': The text of the survey question.
-              - 'total_responses': Total rows in the input file (may not be unique respondents
-                                   if data is structured one row per risk selection per respondent).
-              - 'total_selected': Count of rows where 'Answers' column is 1.
-              - 'percent_selected': Percentage of 'Answers' being 1.
-              - 'main_stats': Contains 'risk_stats' (distribution of selected risks) and
-                              'average_selected_value' (mean of the 'Answers' column).
-              - 'demographic_analysis': Demographic breakdown.
+        dict: A dictionary containing the analysis summary, with the following structure:
+              - 'question_text' (str): The text of the survey question.
+              - 'total_responses' (int): The total number of respondents.
+              - 'main_stats' (dict): Contains the core statistical outputs:
+                  - 'risk_stats_asia_pacific' (dict): A dictionary where keys are 
+                    risk column names (representing specific OWASP risks) and values 
+                    are the total number of times each risk was selected across all 
+                    respondents, sorted in descending order of selection count. 
+                    Example: {'API1_Risk': 150, 'API2_Risk': 120, ...}
+                  - 'risk_matrix_by_country' (dict): A nested dictionary where outer 
+                    keys are country names. Inner keys are risk column names, and 
+                    inner values are the total selections for that risk in that country.
+                    Example: {'CountryA': {'API1_Risk': 50, 'API2_Risk': 40}, ...}
+                  - 'risk_matrix_by_risk' (dict): A nested dictionary where outer keys 
+                    are risk column names. Inner values are dictionaries containing a 
+                    'total' count of selections for that risk and a 'by_country' 
+                    dictionary detailing selections per country for that risk.
+                    Example: {'API1_Risk': {'total': 150, 
+                                          'by_country': {'CountryA': 50, 'CountryB': 100}}, 
+                              ...}
     """
-    df = pd.read_excel(file_path)
+    df = pd.read_excel(file_path, sheet_name="Data")
+
     # Clean column names by stripping leading/trailing whitespace
     df.columns = df.columns.str.strip()
 
-    # Identify relevant columns
-    answer_col = 'Answers'  # Column indicating selection (e.g., 1 if selected, 0 or NaN otherwise)
-    # IMPORTANT: risk_col is identified by index (6th column). This is fragile.
-    # Consider using a more robust method if column order might change, e.g., by name.
-    try:
-        risk_col = df.columns[5]
-    except IndexError:
-        # Handle error if the 6th column doesn't exist
-        raise ValueError(f"The Excel file at {file_path} does not have at least 6 columns to identify the risk column.")
+    # Identify metadata and risk columns
+    metadata_cols = ['ID', 'Country', 'Age', 'Gender', 'Category']
+    risk_cols = [col for col in df.columns if col not in metadata_cols]
 
-    id_col = 'ID' # Assuming an ID column exists, though not directly used in aggregation here
-    demo_cols = ['Country'] # Columns for demographic breakdown
-    # value_cols for demographic summary should reflect what is being analyzed.
-    # Here, 'Answers' (selection status) is used, demographic breakdown will show selection rate by country.
-    value_cols = [answer_col]
-
-    # Total number of rows (might represent individual selections rather than unique respondents)
+    # Total responses = number of rows (respondents)
     total_responses = len(df)
 
-    # Total selected (where 'Answers' column == 1)
-    total_selected = df[answer_col].sum()
-    percent_selected = (total_selected / total_responses) * 100 if total_responses else 0
+    # Total selected = sum of all 1s in all risk columns
+    total_selected = df[risk_cols].sum().sum()
 
-    # Calculate statistics for each risk (based on rows where answer_col == 1)
-    filtered_df = df[df[answer_col] == 1]
-    risk_stats = calculate_stats(filtered_df[risk_col]) if not filtered_df.empty else {}
+    # Percent selected = total 1s / (total cells checked = total_responses * num_risks)
+    percent_selected = (total_selected / (total_responses * len(risk_cols))) * 100 if total_responses else 0
+
+    # Calculate frequency of selection for each risk
+    risk_stats = df[risk_cols].sum().sort_values(ascending=False).to_dict()
+    risk_matrix_by_country = (
+        df.groupby('Country')[risk_cols]
+        .sum()
+        .round(0)
+        .astype(int)
+        .to_dict(orient='index')  # current structure: Country → Risk
+    )
+
+    grouped = df.groupby('Country')[risk_cols].sum().round(0).astype(int)
+    risk_matrix_by_risk = {}
+
+    for risk in risk_cols:
+        total = grouped[risk].sum()
+        by_country = grouped[risk].to_dict()
+        risk_matrix_by_risk[risk] = {
+            'total': int(total),
+            'by_country': by_country
+        }
 
     summary = {
         'question_text': '26 Select the top 3 OWASP API security risks your organization is most concerned about',
         'total_responses': total_responses,
-        'total_selected': int(total_selected),
-        'percent_selected': round(percent_selected, 2),
         'main_stats': {
-            'risk_stats': risk_stats, # Distribution of selected risks
-            'average_selected_value': round(df[answer_col].mean(), 2) if total_responses and pd.notna(df[answer_col].mean()) else 0
+            'risk_stats_asia_pacific': risk_stats,
+            'risk_matrix_by_country': risk_matrix_by_country,
+            'risk_matrix_by_risk': risk_matrix_by_risk,
+            }
         }
-    }
-
-    # Add demographic analysis (e.g., selection rate of risks per country)
-    # The demographic analysis here is on the 'Answers' column, showing how selection varies by demographic.
-    summary = add_demographic_summary(summary, df, demo_cols, value_cols)
 
     return summary
 
