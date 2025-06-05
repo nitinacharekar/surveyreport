@@ -1,21 +1,54 @@
+'''
+Analyzes data for Question 13: "How effective are your current solutions in implementing the following API Posture Management measures within your organization?".
+
+This script processes survey responses where organizations rate the effectiveness of their
+current solutions for specific API Posture Management measures (e.g., 'Implement API gateways', 'Rate limiting').
+The ratings are assumed to be numeric.
+
+It calculates:
+- Overall statistics for each solution's effectiveness using `calculate_stats`.
+- Average effectiveness ratings for each solution.
+- Demographic breakdowns of effectiveness ratings based on specified demographic columns.
+'''
 import pandas as pd
 import json
 from pathlib import Path
 import sys
 import os
-# Add the project root to Python path
+
+# Add the project root to Python path for utility imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 from statistical_analysis.utils.demographic_analysis import add_demographic_summary
 from statistical_analysis.utils.stats_utils import calculate_stats
 
-def analyze_q13(file_path: str):
+def analyze_q13(file_path: str) -> dict:
+    """
+    Analyzes the effectiveness of current solutions for API Posture Management measures (Question 13).
+
+    The function reads data from the specified Excel file. For each API Posture Management measure
+    (defined in `solution_cols`), it calculates descriptive statistics and average effectiveness ratings.
+    The input ratings are expected to be numeric.
+    Demographic analysis is performed for all specified measures.
+
+    Args:
+        file_path (str): Absolute or relative path to the Excel file containing the data.
+
+    Returns:
+        dict: A dictionary containing the analysis summary, including:
+              - 'question_text': The text of the survey question.
+              - 'total_responses': The total number of responses.
+              - 'main_stats': Contains 'solution_stats' (distribution of ratings for each solution's effectiveness)
+                              and 'solution_averages' (average effectiveness rating for each solution).
+              - 'demographic_analysis': Demographic breakdown of effectiveness ratings.
+    """
     df = pd.read_excel(file_path)
-    # Clean column names
+    # Clean column names by stripping leading/trailing whitespace
     df.columns = df.columns.str.strip()
     
     # Identify relevant columns
-    id_col = 'ID'
-    demo_cols = ['Country']
+    id_col = 'ID' # Assuming an ID column exists
+    demo_cols = ['Country'] # Columns for demographic breakdown
+    # Columns representing different API Posture Management measures for which solution effectiveness is rated
     solution_cols = [
         'Implement API gateways',
         'Implement API Access and Authentication',
@@ -26,17 +59,30 @@ def analyze_q13(file_path: str):
         'Integration with API Lifecycle process',
         'API Risk scoring'
     ]
+    value_cols = solution_cols # These columns contain the numeric ratings to be analyzed
 
-    # Total responses
+    # Total number of responses
     total_responses = len(df)
     
     # Calculate statistics for each solution
     solution_stats = {}
     for col in solution_cols:
-        solution_stats[col] = calculate_stats(df[col])
+        if col in df.columns:
+            # Ensure data is numeric before calculating stats, coercing errors to NaN
+            numeric_series = pd.to_numeric(df[col], errors='coerce').dropna()
+            solution_stats[col] = calculate_stats(numeric_series) if not numeric_series.empty else {}
+        else:
+            solution_stats[col] = {"error": f"Column '{col}' not found in data."}
 
-    # Calculate averages
-    solution_averages = {col: round(df[col].mean(), 2) for col in solution_cols}
+    # Calculate averages for solution effectiveness
+    solution_averages = {}
+    for col in solution_cols:
+        if col in df.columns:
+            # Ensure data is numeric before calculating mean, coercing errors to NaN
+            numeric_series = pd.to_numeric(df[col], errors='coerce').dropna()
+            solution_averages[col] = round(numeric_series.mean(), 2) if not numeric_series.empty else None
+        else:
+            solution_averages[col] = None
 
     summary = {
         'question_text': '13 How effective are your current solutions in implementing the following API Posture Management measures within your organization?',
@@ -46,11 +92,37 @@ def analyze_q13(file_path: str):
             'solution_averages': solution_averages
         }
     }
+    
     # Add demographic analysis
-    summary = add_demographic_summary(summary, df, demo_cols, solution_cols)
+    # Ensure only valid columns present in df are passed to add_demographic_summary
+    valid_value_cols_for_demo = [col for col in value_cols if col in df.columns]
+    if valid_value_cols_for_demo:
+        # Convert columns to numeric for demographic summary if they are not already, handling potential errors
+        df_demo = df.copy()
+        for col in valid_value_cols_for_demo:
+            df_demo[col] = pd.to_numeric(df_demo[col], errors='coerce')
+        summary = add_demographic_summary(summary, df_demo, demo_cols, valid_value_cols_for_demo)
+    else:
+        summary['demographic_analysis'] = {} # Ensure key exists
+        
     return summary
 
 if __name__ == "__main__":
-    file_path = '../../data/Section 3/3.2 API Posture Management/13 API Posture Management- Effectiveness.xlsx'
-    stats = analyze_q13(file_path)
-    print(json.dumps(stats, indent=2)) 
+    # This block allows direct execution of the script for testing or individual analysis.
+    # Construct the path to the data file dynamically from the script's location.
+    default_data_file = os.path.join(
+        os.path.dirname(__file__), '..', '..', 'data', 'Section 3', '3.2 API Posture Management', 
+        '13 API Posture Management- Effectiveness.xlsx'
+    )
+
+    if not os.path.exists(default_data_file):
+        print(f"Warning: Default data file not found at {default_data_file}")
+        q13_results = {"error": f"Data file not found: {default_data_file}"}
+    else:
+        try:
+            q13_results = analyze_q13(default_data_file)
+        except Exception as e:
+            print(f"An unexpected error occurred while analyzing {default_data_file}: {e}")
+            q13_results = {"error": str(e)}
+    
+    print(json.dumps(q13_results, indent=2)) 
