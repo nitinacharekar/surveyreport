@@ -1,426 +1,681 @@
 """
 Summary Agent using LangGraph
 
-This module implements a multi-agent system for analyzing and summarizing statistical data.
-It uses a graph-based workflow to coordinate multiple agents that process questions,
-create summaries, and validate outputs with retry capabilities.
+This module implements a multi-agent system for analyzing and summarizing statistical data,
+likely from surveys. It utilizes LangGraph to define and manage a graph-based workflow,
+coordinating multiple AI agents (powered by OpenAI's GPT models) that perform tasks such as:
+processing questions, creating summaries for different sections, combining these summaries,
+analyzing data based on country demographics, and generating persona-specific interpretations.
+The system includes validation steps with feedback loops and retry mechanisms to ensure
+the quality and accuracy of the generated report.
 
-The workflow consists of:
-1. Question processing for each section
-2. Section summarization for each section
-3. Combined section analysis
-4. Country based analysis
-5. Persona analysis (parallel)
-6. Validation with feedback loop
+The core workflow involves:
+1.  **Question Processing**: For each defined section, individual questions and their
+    associated statistical data are processed by an AI agent to generate initial analyses.
+2.  **Section Summarization**: The analyses for all questions within a section are synthesized
+    by another agent to create a concise summary for that section.
+3.  **Validation (Sections)**: Section summaries and their underlying analyses are validated.
+    If issues are found, feedback is generated, and the section processing can be retried.
+4.  **Combined Summary**: All validated section summaries are amalgamated into a single,
+    comprehensive overview of the survey findings.
+5.  **Validation (Combined)**: The combined summary is validated against section summaries.
+6.  **Country-based Analysis**: Data is aggregated by country, and AI agents generate
+    insights specific to each country's API security landscape.
+7.  **Validation (Country)**: Country analyses are validated.
+8.  **Persona Analysis**: The combined summary and country data are interpreted from
+    different predefined persona perspectives (e.g., Customer, Vendor).
+9.  **Validation (Persona)**: Persona analyses are validated.
+10. **Final Report Generation**: All validated outputs are compiled into JSON and Markdown
+    reports.
+
+The system uses `autogen` for agent definitions and `langgraph` for state management and
+workflow orchestration. Environment variables (e.g., `OPENAI_API_KEY`) are loaded using
+`python-dotenv`.
 """
 
 import os
 import json
 from pathlib import Path
+# Imports for statistical data from different sections
 from statistical_analysis.Section1.section1_full_stats import get_section1_stats
 from statistical_analysis.Section2.section2_full_stats import get_section2_stats
 from statistical_analysis.Section3.section3_full_stats import get_section3_stats
 from statistical_analysis.Section4.section4_full_stats import get_section4_stats
 import openai
-import autogen
-import concurrent.futures
+import autogen # For creating AI agents
+import concurrent.futures # For parallel execution of tasks
 import re
 import logging
 from typing import Dict, List, Tuple, Any, Optional, TypedDict
-from dataclasses import dataclass
-from langgraph.graph import StateGraph, START, END
-from dotenv import load_dotenv
-from langchain_core.runnables.config import RunnableConfig
+from dataclasses import dataclass # Although dataclass is imported, it's not used. TypedDict is used for state.
+from langgraph.graph import StateGraph, START, END # Core components for building the stateful graph
+from dotenv import load_dotenv # For loading environment variables from a .env file
+from langchain_core.runnables.config import RunnableConfig # For configuring graph execution (e.g., recursion limit)
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
+# Configure logging for the application
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler('summary_agent.log')
+        logging.StreamHandler(), # Log to console
+        logging.FileHandler('summary_agent.log') # Log to a file
     ]
 )
 logger = logging.getLogger(__name__)
 
-# OpenAI Configuration
+# OpenAI API Configuration
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 if not OPENAI_API_KEY:
+    logger.error("OPENAI_API_KEY not found in environment variables. Please set it in your .env file.")
     raise ValueError("OPENAI_API_KEY not found in environment variables")
 openai.api_key = OPENAI_API_KEY
 
 def openai_llm(prompt: str) -> str:
     """
-    Generate a response using OpenAI's GPT-4.
-    
+    Generates a response using OpenAI's GPT-4o-mini model.
+
     Args:
-        prompt: The input prompt for the LLM
-        
+        prompt: The input prompt for the Large Language Model.
+
     Returns:
-        The generated text response
+        The text response generated by the LLM.
+        
+    Raises:
+        openai.APIError: If there's an issue with the OpenAI API call.
     """
-    logger.info(f"Generating response for prompt of length {len(prompt)}")
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a helpful AI assistant that analyzes and summarizes data."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.7,
-        max_tokens=2000
-    )
-    logger.debug(f"Generated response: {response.choices[0].message.content[:100]}...")
-    return response.choices[0].message.content
+    logger.info(f"Generating LLM response for prompt (length: {len(prompt)} chars)")
+    try:
+        client = openai.OpenAI(api_key=OPENAI_API_KEY)
+        response = client.chat.completions.create(
+            model="gpt-4o-mini", # Using a specific OpenAI model
+            messages=[
+                {"role": "system", "content": "You are a helpful AI assistant that analyzes and summarizes data."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7, # Controls randomness: lower is more deterministic
+            max_tokens=2000  # Maximum number of tokens to generate
+        )
+        generated_text = response.choices[0].message.content
+        logger.debug(f"LLM generated response (first 100 chars): {generated_text[:100]}...")
+        return generated_text
+    except openai.APIError as e:
+        logger.error(f"OpenAI API error: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"An unexpected error occurred in openai_llm: {e}")
+        # Fallback or re-raise depending on desired error handling
+        raise
 
 class OpenAIAgent(autogen.ConversableAgent):
     """
-    Custom agent implementation using OpenAI GPT-4.
-    Extends the base ConversableAgent with OpenAI-specific functionality.
+    A custom AutoGen ConversableAgent that uses the OpenAI GPT-4o-mini model for replies.
+    This agent is designed to interact within the LangGraph framework by providing
+    a consistent way to call the LLM.
     """
     
     def __init__(self, name: str, system_message: str):
         """
-        Initialize the OpenAI agent.
-        
+        Initializes the OpenAIAgent.
+
         Args:
-            name: Unique identifier for the agent
-            system_message: The system message defining the agent's role and behavior
+            name: The unique name of the agent.
+            system_message: The system message that defines the agent's role, behavior,
+                            and instructions for interacting.
         """
         super().__init__(name=name, llm_config=None, system_message=system_message)
-        logger.info(f"Initialized OpenAIAgent: {name}")
+        # llm_config is set to None because we are directly using the openai_llm function.
+        logger.info(f"Initialized OpenAIAgent: {name} with system message: '{system_message[:100]}...'")
     
     def generate_reply(self, messages: List[Dict[str, str]], **kwargs) -> str:
         """
-        Generate a reply using OpenAI GPT-4.
-        
+        Generates a reply using the configured OpenAI LLM.
+        It takes the last user message from the conversation history as the prompt.
+
         Args:
-            messages: List of message dictionaries containing the conversation history
-            
+            messages: A list of message dictionaries representing the conversation history.
+                      Each dictionary should have 'role' and 'content' keys.
+            **kwargs: Additional keyword arguments (not used in this implementation).
+
         Returns:
-            The generated reply text
+            The string content of the LLM's reply.
         """
+        # The prompt is typically the last message in the list from the 'user'
         prompt = messages[-1]['content']
-        logger.info(f"Agent {self.name} generating reply")
+        logger.info(f"Agent '{self.name}' generating reply to prompt: '{prompt[:100]}...'")
         return openai_llm(prompt)
 
-# State Management
+# State Management for the LangGraph workflow
 class AgentState(TypedDict):
     """
-    Type definition for the agent state.
-    Tracks all necessary information throughout the workflow.
+    Defines the structure of the state that is passed between nodes in the LangGraph.
+    It tracks all outputs, summaries, validation results, and control flow flags
+    throughout the survey analysis process.
     """
+    # Outputs from individual question processing for each section
     section1_outputs: Dict[str, str]
     section2_outputs: Dict[str, str]
     section3_outputs: Dict[str, str]
     section4_outputs: Dict[str, str]
+    
+    # Summaries for each section
     section1_summary: str
     section2_summary: str
     section3_summary: str
     section4_summary: str
+    
+    # Combined summary of all sections
     combined_summary: str
-    country_analysis: Dict[str, str]
-    country_summary: str
-    persona_outputs: Dict[str, str]
-    validation: str
-    validation_feedback: str
-    section_attempts: Dict[str, int]  # Track attempts per section
-    max_attempts: int  # Maximum number of retry attempts
-    needs_section_rerun: Dict[str, bool]
+    
+    # Country-specific analysis
+    country_analysis: Dict[str, str] # Key: country name, Value: analysis text
+    country_summary: str # Overall summary of country trends (if applicable, seems unused based on save_final_report)
+    
+    # Persona-based interpretations
+    persona_outputs: Dict[str, str] # Key: persona name, Value: interpretation text
+    
+    # Validation fields
+    validation: str # Stores the raw validation output (e.g., "APPROVED" or "REJECTED: reason")
+    validation_feedback: str # Stores feedback from the validation agent, used for retries
+    validation_passed: bool # Flag indicating if the last validation step passed
 
-# Node Functions
-def process_single_question(section: str, q: str, stats: Dict[str, Any], state: AgentState) -> Tuple[str, str]:
+    # Retry mechanism control
+    section_attempts: Dict[str, int]  # Tracks retry attempts for each section/stage (e.g., "section1", "combined")
+    max_attempts: int  # Maximum number of retry attempts allowed for any stage
+    needs_section_rerun: Dict[str, bool] # Flags indicating if a specific section/stage needs to be rerun
+
+# Node Functions for the LangGraph
+# These functions represent the actions performed at each step of the graph.
+
+def process_single_question(section: str, q_id: str, stats: Dict[str, Any], state: AgentState) -> Tuple[str, str]:
     """
-    Process a single question with its statistics.
-    
+    Processes a single question using an OpenAIAgent to analyze its statistics.
+    Incorporates validation feedback if a rerun is triggered for this section.
+
     Args:
-        section: Section identifier
-        q: Question identifier
-        stats: Statistics for the question
-        state: Current workflow state
-        
+        section: The identifier of the current section (e.g., "section1").
+        q_id: The identifier for the question being processed.
+        stats: A dictionary containing statistical data for the question.
+        state: The current state of the workflow.
+
     Returns:
-        Tuple of (question_id, analysis)
+        A tuple containing the question ID and the generated analysis text.
     """
-    feedback_prompt = ""
-    if state['validation_feedback'] and state['needs_section_rerun'].get(section, False):
-        feedback_prompt = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your analysis."
+    logger.info(f"Processing question '{q_id}' for {section}")
+    feedback_prompt_addition = ""
+    # Incorporate feedback if this section is being rerun due to prior validation failure
+    if state.get('validation_feedback') and state.get('needs_section_rerun', {}).get(section, False):
+        feedback_prompt_addition = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your analysis."
     
-    agent = OpenAIAgent(
-        name=f"{section}_{q}_agent",
-        system_message=f"""You are an expert analyst for {section} - {q}. Provide a brief, reasoned analysis based on the data below. Only cite specific data points as evidence to support your claims. Do not simply restate the data. Focus on drawing insights, trends, or implications, and use the data only to support your reasoning. Be extremely concise (1-2 sentences).{feedback_prompt}"""
+    # Define the system message for the agent analyzing this specific question
+    system_msg = (
+        f"You are an expert analyst for {section} - {q_id}. "
+        "Provide a brief, reasoned analysis based on the data below. "
+        "Only cite specific data points as evidence to support your claims. "
+        "Do not simply restate the data. Focus on drawing insights, trends, or implications, "
+        "and use the data only to support your reasoning. Be extremely concise (1-2 sentences)."
+        f"{feedback_prompt_addition}"
     )
-    prompt = f"Statistics:\n{json.dumps(stats, indent=2)}"
-    return q, agent.generate_reply([{'role': 'user', 'content': prompt}])
+    agent = OpenAIAgent(
+        name=f"{section}_{q_id}_analyzer_agent",
+        system_message=system_msg
+    )
+    
+    # Prepare the prompt with the statistical data for the question
+    prompt_content = f"Statistics for {q_id}:\n{json.dumps(stats, indent=2)}"
+    analysis = agent.generate_reply([{'role': 'user', 'content': prompt_content}])
+    logger.debug(f"Generated analysis for {section} - {q_id}: '{analysis[:100]}...'")
+    return q_id, analysis
 
 def process_section_questions(section: str, state: AgentState) -> AgentState:
     """
-    Process all questions for a specific section in parallel.
-    
+    Processes all questions for a given section in parallel using a ThreadPoolExecutor.
+    Retrieves statistical data for the section and then calls `process_single_question` for each.
+
     Args:
-        section: Section identifier
-        state: Current workflow state
-        
+        section: The identifier of the section to process (e.g., "section1").
+        state: The current state of the workflow.
+
     Returns:
-        Updated state with section question analyses
+        The updated state with the analyses for all questions in the section stored
+        in the corresponding `sectionX_outputs` field.
     """
-    logger.info(f"Processing questions for {section} in parallel")
+    logger.info(f"Processing all questions for {section} in parallel.")
     
-    # Get section stats
-    section_stats = {
+    # Dynamically get the statistics function for the current section
+    stats_retriever_map = {
         'section1': get_section1_stats,
         'section2': get_section2_stats,
         'section3': get_section3_stats,
         'section4': get_section4_stats
-    }[section]()
+    }
+    if section not in stats_retriever_map:
+        logger.error(f"No statistics retriever function found for section: {section}")
+        raise ValueError(f"Invalid section identifier: {section}")
     
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_question = {
-            executor.submit(process_single_question, section, q, stats, state): q 
-            for q, stats in section_stats.items()
+    section_stats_data = stats_retriever_map[section]() # Retrieve stats for the section
+    
+    # Ensure the section_outputs field for the current section exists in the state
+    if f'{section}_outputs' not in state:
+        state[f'{section}_outputs'] = {}
+
+    # Use ThreadPoolExecutor for parallel processing of questions
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor: # Adjust max_workers as needed
+        # Submit tasks for each question in the section
+        future_to_q_id = {
+            executor.submit(process_single_question, section, q_id, q_stats, state): q_id 
+            for q_id, q_stats in section_stats_data.items()
         }
-        for future in concurrent.futures.as_completed(future_to_question):
-            q, output = future.result()
-            state[f'{section}_outputs'][q] = output
-            logger.debug(f"Completed {section} question: {q}")
+        
+        # Collect results as they complete
+        for future in concurrent.futures.as_completed(future_to_q_id):
+            q_id = future_to_q_id[future]
+            try:
+                _, output_analysis = future.result() # q_id is already known
+                state[f'{section}_outputs'][q_id] = output_analysis
+                logger.debug(f"Successfully processed question '{q_id}' for {section}.")
+            except Exception as exc:
+                logger.error(f"Question '{q_id}' in {section} generated an exception: {exc}")
+                state[f'{section}_outputs'][q_id] = f"Error processing question: {exc}" # Store error message
     
+    logger.info(f"Finished processing all questions for {section}.")
     return state
 
 def process_section_summary(section: str, state: AgentState) -> AgentState:
     """
-    Process the section summary based on question analyses.
-    
+    Generates a summary for a given section based on the analyses of its individual questions.
+    Uses an OpenAIAgent to synthesize the per-question analyses.
+    Incorporates validation feedback if a rerun is triggered for this section.
+
     Args:
-        section: Section identifier
-        state: Current workflow state
-        
+        section: The identifier of the section to summarize (e.g., "section1").
+        state: The current state of the workflow.
+
     Returns:
-        Updated state with section summary
+        The updated state with the generated summary stored in the
+        corresponding `sectionX_summary` field.
     """
-    logger.info(f"Processing {section} summary")
-    feedback_prompt = ""
-    if state['validation_feedback'] and state['needs_section_rerun'].get(section, False):
-        feedback_prompt = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your synthesis."
-    
-    section_moderator = OpenAIAgent(
-        name=f"{section}_moderator",
-        system_message=f"""You are a Section Moderator for {section}. Synthesize the following per-question summaries into exactly 4 sentences maximum. Focus on the most important cross-question patterns and key findings. Provide a reasoned analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. Draw insights, trends, or implications, and use the data only to support your reasoning. Be extremely concise and avoid any redundancy.{feedback_prompt}"""
+    logger.info(f"Generating summary for {section}.")
+    feedback_prompt_addition = ""
+    # Incorporate feedback if this section is being rerun
+    if state.get('validation_feedback') and state.get('needs_section_rerun', {}).get(section, False):
+        feedback_prompt_addition = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your synthesis."
+
+    system_msg = (
+        f"You are a Section Moderator for {section}. "
+        "Synthesize the following per-question summaries into exactly 4 sentences maximum. "
+        "Focus on the most important cross-question patterns and key findings. "
+        "Provide a reasoned analysis, using data only as evidence to support your claims. "
+        "Do not simply restate or regurgitate the data. "
+        "Draw insights, trends, or implications, and use the data only to support your reasoning. "
+        "Be extremely concise and avoid any redundancy."
+        f"{feedback_prompt_addition}"
     )
-    section_prompt = "\n\n".join(state[f'{section}_outputs'].values())
-    state[f'{section}_summary'] = section_moderator.generate_reply([{'role': 'user', 'content': section_prompt}])
+    section_moderator_agent = OpenAIAgent(
+        name=f"{section}_summary_moderator_agent",
+        system_message=system_msg
+    )
+    
+    # Combine all per-question analyses for the section to form the prompt
+    question_analyses = state.get(f'{section}_outputs', {}).values()
+    if not question_analyses:
+        logger.warning(f"No question analyses found for {section} to generate summary.")
+        state[f'{section}_summary'] = "No analysis available to generate section summary."
+        return state
+        
+    summary_prompt_content = "\n\n".join(question_analyses)
+    section_summary_text = section_moderator_agent.generate_reply([{'role': 'user', 'content': summary_prompt_content}])
+    state[f'{section}_summary'] = section_summary_text
+    logger.info(f"Generated summary for {section}: '{section_summary_text[:100]}...'")
     return state
 
 def process_combined_summary(state: AgentState) -> AgentState:
     """
-    Process the combined summary of all sections.
-    
+    Generates a combined summary based on all individual section summaries.
+    Uses an OpenAIAgent to synthesize the section summaries into an overall analysis.
+    Incorporates validation feedback if a rerun of the combined summary is triggered.
+
     Args:
-        state: Current workflow state
-        
+        state: The current state of the workflow, containing all section summaries.
+
     Returns:
-        Updated state with combined summary
+        The updated state with the `combined_summary` field populated.
     """
-    logger.info("Processing combined summary")
-    feedback_prompt = ""
-    if state['validation_feedback']:
-        feedback_prompt = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your synthesis."
+    logger.info("Generating combined summary of all sections.")
+    feedback_prompt_addition = ""
+    # Incorporate feedback if the combined summary stage is being rerun
+    if state.get('validation_feedback') and state.get('needs_section_rerun', {}).get('combined', False): # Check 'combined' key for this stage
+        feedback_prompt_addition = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your synthesis."
     
-    combined_moderator = OpenAIAgent(
-        name="combined_moderator",
-        system_message=f"""You are a combined analysis moderator. Analyze the following section summaries of responses to an API Security survey and provide an overall summary of global API Security trends, strengths, weaknesses, and unique characteristics. Don't focus on outputting the data, focus on the analysis and overall summary. 
-        {feedback_prompt}"""
+    system_msg = (
+        "You are a combined analysis moderator. Analyze the following section summaries of responses "
+        "to an API Security survey and provide an overall summary of global API Security trends, "
+        "strengths, weaknesses, and unique characteristics. "
+        "Don't focus on outputting the data, focus on the analysis and overall summary. "
+        f"{feedback_prompt_addition}"
+    )
+    combined_moderator_agent = OpenAIAgent(
+        name="combined_summary_moderator_agent",
+        system_message=system_msg
     )
     
-    section_summaries = {
-        'Section 1': state['section1_summary'],
-        'Section 2': state['section2_summary'],
-        'Section 3': state['section3_summary'],
-        'Section 4': state['section4_summary']
+    section_summaries_map = {
+        'Section 1': state.get('section1_summary', "Not available."),
+        'Section 2': state.get('section2_summary', "Not available."),
+        'Section 3': state.get('section3_summary', "Not available."),
+        'Section 4': state.get('section4_summary', "Not available.")
     }
     
-    combined_prompt = "\n\n".join([f"{section}:\n{summary}" for section, summary in section_summaries.items()])
-    state['combined_summary'] = combined_moderator.generate_reply([{'role': 'user', 'content': combined_prompt}])
+    # Prepare the prompt by concatenating all section summaries
+    combined_prompt_content = "\n\n".join([f"{sec_name}: \n{summary}" for sec_name, summary in section_summaries_map.items()])
+    
+    if not any(s != "Not available." for s in section_summaries_map.values()):
+        logger.warning("No section summaries available to generate combined summary.")
+        state['combined_summary'] = "No section summaries available to generate a combined summary."
+        return state
+
+    combined_summary_text = combined_moderator_agent.generate_reply([{'role': 'user', 'content': combined_prompt_content}])
+    state['combined_summary'] = combined_summary_text
+    logger.info(f"Generated combined summary: '{combined_summary_text[:100]}...'")
     return state
 
 def process_country_analysis(state: AgentState) -> AgentState:
     """
-    Aggregate demographic data by country from all section stats and generate OpenAI insights.
-    """
-    logger.info("Processing country analysis node...")
+    Aggregates demographic data by country from all section statistics and uses an
+    OpenAIAgent to generate API Security insights for each country.
 
-    # Load all section stats
-    all_section_stats = {
+    Args:
+        state: The current state of the workflow.
+
+    Returns:
+        The updated state with country-specific analyses stored in the `country_analysis` field.
+    """
+    logger.info("Processing country-specific analysis node.")
+
+    all_section_stats_data = {
         'Section1': get_section1_stats(),
         'Section2': get_section2_stats(),
         'Section3': get_section3_stats(),
         'Section4': get_section4_stats(),
     }
 
-    # Aggregate by country using improved logic
-    country_data = {}
-    for section, section_stats in all_section_stats.items():
-        for qkey, summary in section_stats.items():
-            demo_summary = summary.get('demographic_analysis')
-            if not demo_summary:
-                continue
-            total_responses_by_demo = demo_summary.get('total_responses_by_demo', {})
-            for demo_col, country_counts in total_responses_by_demo.items():
-                for country, count in country_counts.items():
-                    if country not in country_data:
-                        country_data[country] = {}
-                    country_data[country][f'{section}_{qkey}'] = {
-                        'total_responses': count,
-                        'question_text': demo_summary.get('question_text'),
-                        # Add more fields if needed from demo_summary['statistics']
-                    }
-    logger.info(f"Countries found: {list(country_data.keys())}")
+    country_aggregated_data = {}
+    # Aggregate data by country across all sections and questions
+    for section_name, section_stat_content in all_section_stats_data.items():
+        for question_key, summary_details in section_stat_content.items():
+            demographic_summary = summary_details.get('demographic_analysis')
+            if not demographic_summary:
+                continue # Skip if no demographic analysis for this question
+            
+            total_responses_by_demographics = demographic_summary.get('total_responses_by_demo', {})
+            for demo_column, country_value_counts in total_responses_by_demographics.items():
+                 # Assuming demo_column might be 'Country' or similar that contains country names as keys
+                if isinstance(country_value_counts, dict): # Expecting a dict like {'USA': 10, 'Canada': 5}
+                    for country_name, response_count in country_value_counts.items():
+                        if country_name not in country_aggregated_data:
+                            country_aggregated_data[country_name] = {}
+                        # Store relevant data for the country, question, and section
+                        country_aggregated_data[country_name][f'{section_name}_{question_key}_{demo_column}'] = {
+                            'total_responses': response_count,
+                            'question_text': demographic_summary.get('question_text'),
+                            # Potentially add more specific stats from summary_details['statistics'] if needed
+                        }
+    
+    logger.info(f"Found data for countries: {list(country_aggregated_data.keys())}")
 
-    # Generate insights for each country using OpenAI
-    insights = {}
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    for country, summary in country_data.items():
-        logger.info(f"Generating insight for {country}...")
-        prompt = f"""
-You are an expert in API Security analysis. Based on the following demographic and statistical data for {country}, provide a detailed, data-driven analysis of API Security trends, strengths, weaknesses, and unique characteristics for this country. 
+    country_insights = {}
+    client = openai.OpenAI(api_key=OPENAI_API_KEY) # Re-initialize client or use global one
 
-- Highlight what makes this country stand out compared to other countries.
-- Identify any outliers, surprising results, or unique patterns in the data.
-- Use specific data points as evidence for your claims (percentages, counts, averages, etc.).
-- Avoid generic statements; focus on what is truly unique or notable for this country.
-- Avoid talking about counts of people who participated in total for a question, instead focus on the specific answers to the questions.
-- Do not use information that does not exist in the data.
+    feedback_prompt_addition = ""
+    # Incorporate feedback if the country analysis stage is being rerun
+    if state.get('validation_feedback') and state.get('needs_section_rerun', {}).get('country', False):
+        feedback_prompt_addition = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your analysis."
 
-Demographic and Statistical Data:
-{json.dumps(summary, indent=2)}
-"""
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are an expert API Security analyst."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=300,
-            temperature=0.3
+    for country_name, aggregated_summary in country_aggregated_data.items():
+        logger.info(f"Generating API security insight for {country_name}...")
+        prompt_for_country = (
+            f"You are an expert in API Security analysis. Based on the following demographic and "
+            f"statistical data for {country_name}, provide a detailed, data-driven analysis of API "
+            f"Security trends, strengths, weaknesses, and unique characteristics for this country. \n\n"
+            f"- Highlight what makes this country stand out compared to other countries if data allows comparison (otherwise focus on its unique profile).\n"
+            f"- Identify any outliers, surprising results, or unique patterns in the data for {country_name}.\n"
+            f"- Use specific data points as evidence for your claims (percentages, counts, averages, etc.).\n"
+            f"- Avoid generic statements; focus on what is truly unique or notable for this country based on the provided data.\n"
+            f"- Avoid talking about counts of people who participated in total for a question, instead focus on the specific answers to the questions and their distribution.\n"
+            f"- Do not use information that does not exist in the provided data.\n"
+            f"{feedback_prompt_addition}\n\n"
+            f"Demographic and Statistical Data for {country_name}:\n{json.dumps(aggregated_summary, indent=2)}\n"
         )
-        insights[country] = response.choices[0].message.content.strip()
-        logger.info(f"Insight for {country}: {insights[country]}")
+        
+        try:
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are an expert API Security analyst specializing in country-specific trends."},
+                    {"role": "user", "content": prompt_for_country}
+                ],
+                max_tokens=1000, # Increased token limit for detailed country analysis
+                temperature=0.3  # Lower temperature for more factual, less creative output
+            )
+            insight_text = response.choices[0].message.content.strip()
+            country_insights[country_name] = insight_text
+            logger.info(f"Generated insight for {country_name}: {insight_text[:100]}...")
+        except Exception as e:
+            logger.error(f"Error generating insight for {country_name}: {e}")
+            country_insights[country_name] = f"Error generating analysis for {country_name}: {e}"
 
-    # Store in state
-    state['country_analysis'] = insights
+    state['country_analysis'] = country_insights
     return state
 
 def process_personas(state: AgentState) -> AgentState:
     """
-    Process persona analyses in parallel, using both the combined summary and country demographic data.
+    Processes persona-based analyses in parallel.
+    Each persona interprets the combined summary and country data from their unique perspective.
+
+    Args:
+        state: The current state of the workflow, containing combined_summary and country_analysis.
+
+    Returns:
+        The updated state with persona interpretations stored in the `persona_outputs` field.
     """
-    logger.info("Processing personas in parallel")
-    personas = [
-        ("Customer", "You are a customer. Interpret these section insights from your perspective. What stands out? What actions or concerns would you have?"),
-        ("Business Customer", "You are a business customer. Interpret these section insights from your perspective. What stands out? What actions or concerns would you have?"),
-        ("F5 Vendor", "You are F5 Networks, the vendor. Interpret these section insights from your perspective. What stands out? What actions or concerns would you have?")
+    logger.info("Processing persona-based analyses in parallel.")
+    
+    # Define the personas and their respective system messages/perspectives
+    persona_definitions = [
+        ("Customer", "You are a customer evaluating API security. Interpret these survey insights from your perspective. What stands out? What actions or concerns would you have regarding services you use?"),
+        ("Business Customer", "You are a business customer (e.g., an enterprise consuming APIs). Interpret these survey insights from your perspective. What are the key implications for your organization's API strategy and security posture?"),
+        ("F5 Vendor", "You are F5 Networks, a major API security vendor. Interpret these survey insights from your perspective. What market trends, customer needs, or competitive opportunities do these findings highlight for F5?")
     ]
-    country_data = state.get('country_analysis', {})
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_to_persona = {
-            executor.submit(process_single_persona, persona_name, persona_msg, state['combined_summary'], country_data): persona_name
-            for persona_name, persona_msg in personas
+    
+    # Retrieve combined summary and country data from the state
+    combined_summary_text = state.get('combined_summary', "Combined summary not available.")
+    country_specific_data = state.get('country_analysis', {})
+
+    if 'persona_outputs' not in state: # Ensure persona_outputs exists
+        state['persona_outputs'] = {}
+
+    # Use ThreadPoolExecutor for parallel processing of personas
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(persona_definitions)) as executor:
+        future_to_persona_name = {
+            executor.submit(process_single_persona, p_name, p_message, combined_summary_text, country_specific_data, state): p_name
+            for p_name, p_message in persona_definitions
         }
-        for future in concurrent.futures.as_completed(future_to_persona):
-            persona_name, output = future.result()
-            state['persona_outputs'][persona_name] = output
-            logger.debug(f"Completed persona: {persona_name}")
+        
+        for future in concurrent.futures.as_completed(future_to_persona_name):
+            p_name = future_to_persona_name[future]
+            try:
+                _, persona_interpretation = future.result() # p_name is already known
+                state['persona_outputs'][p_name] = persona_interpretation
+                logger.debug(f"Successfully generated interpretation for persona: {p_name}.")
+            except Exception as exc:
+                logger.error(f"Persona '{p_name}' generated an exception: {exc}")
+                state['persona_outputs'][p_name] = f"Error generating interpretation for persona {p_name}: {exc}"
+                
+    logger.info("Finished processing all personas.")
     return state
 
-def process_single_persona(persona_name: str, persona_msg: str, combined_summary: str, country_data: dict) -> Tuple[str, str]:
+def process_single_persona(persona_name: str, persona_system_message: str, combined_summary: str, country_data: dict, state: AgentState) -> Tuple[str, str]:
     """
-    Process a single persona analysis, including demographic/country data in the prompt.
-    """
-    prompt = (
-        f"{combined_summary}\n\n"
-        f"Here is detailed demographic and country-specific data:\n"
-        f"{json.dumps(country_data, indent=2)}"
-    )
-    agent = OpenAIAgent(
-        name=f"{persona_name}_agent",
-        system_message=f"{persona_msg} Provide your interpretation in exactly 2 sentences maximum. Focus on reasoning and analysis, using data only as evidence to support your claims. Do not simply restate or regurgitate the data. Be extremely concise."
-    )
-    return persona_name, agent.generate_reply([{'role': 'user', 'content': prompt}])
+    Generates an interpretation for a single persona based on the combined summary and country data.
+    Incorporates validation feedback if a rerun of persona analysis is triggered.
 
-def increment_attempt(state: AgentState, section: str) -> AgentState:
+    Args:
+        persona_name: The name of the persona (e.g., "Customer").
+        persona_system_message: The system message defining the persona's perspective.
+        combined_summary: The overall combined summary of the survey.
+        country_data: A dictionary of country-specific analyses.
+        state: The current workflow state (used for feedback).
+
+
+    Returns:
+        A tuple containing the persona name and their generated interpretation.
     """
-    Increment the retry attempt counter for a specific section and log the attempt.
+    logger.info(f"Generating interpretation for persona: {persona_name}")
+    feedback_prompt_addition = ""
+    # Incorporate feedback if persona analysis is being rerun
+    if state.get('validation_feedback') and state.get('needs_section_rerun', {}).get('personas', False):
+        feedback_prompt_addition = f"\n\nPrevious validation feedback: {state['validation_feedback']}\nPlease address these issues in your interpretation."
+
+    # Construct the prompt including combined summary and country-specific data
+    prompt_content = (
+        f"Overall Survey Combined Summary:\n{combined_summary}\n\n"
+        f"Detailed Country-Specific Data (for context, if relevant to your persona):\n"
+        f"{json.dumps(country_data, indent=2)}\n\n"
+        f"As the {persona_name}, provide your interpretation based on all the above information."
+        f"{feedback_prompt_addition}"
+    )
+    
+    # Define the agent for this persona
+    persona_agent = OpenAIAgent(
+        name=f"{persona_name}_interpretation_agent",
+        system_message=(
+            f"{persona_system_message} "
+            "Provide your interpretation in exactly 2-3 sentences maximum. "
+            "Focus on reasoning and analysis, using the provided data and summaries as evidence to support your claims. "
+            "Do not simply restate or regurgitate the data. Be extremely concise and insightful from your specific viewpoint."
+        )
+    )
+    
+    interpretation = persona_agent.generate_reply([{'role': 'user', 'content': prompt_content}])
+    logger.debug(f"Generated interpretation for {persona_name}: '{interpretation[:100]}...'")
+    return persona_name, interpretation
+
+def increment_attempt(state: AgentState, stage_key: str) -> AgentState:
     """
-    # Only increment the attempt counter for a section if a rerun is actually needed
-    if 'section_attempts' not in state:
+    Increments the retry attempt counter for a specific stage of the workflow.
+    This is typically called after a validation failure before a retry.
+
+    Args:
+        state: The current state of the workflow.
+        stage_key: The key identifying the stage for which to increment the attempt
+                   (e.g., "section1", "combined", "country", "personas").
+
+    Returns:
+        The updated state with the attempt counter incremented for the specified stage.
+    """
+    if 'section_attempts' not in state: # Should be initialized in `main`
         state['section_attempts'] = {}
-    if section not in state['section_attempts']:
-        state['section_attempts'][section] = 0
-    old_attempt = state['section_attempts'][section]
-    if state['needs_section_rerun'].get(section, False):
-        state['section_attempts'][section] += 1
-        logger.info(f"Incrementing attempt counter for {section} from {old_attempt} to {state['section_attempts'][section]} (max: {state['max_attempts']})")
+    
+    current_attempts = state['section_attempts'].get(stage_key, 0)
+    
+    # Only increment if a rerun is actually marked as needed for this stage
+    if state.get('needs_section_rerun', {}).get(stage_key, False):
+        state['section_attempts'][stage_key] = current_attempts + 1
+        logger.info(f"Incrementing attempt counter for stage '{stage_key}' from {current_attempts} to {state['section_attempts'][stage_key]} (max: {state['max_attempts']})")
     else:
-        logger.info(f"Not incrementing attempt counter for {section} because needs_section_rerun is False.")
-    logger.info(f"Current rerun flags: {json.dumps(state['needs_section_rerun'], indent=2)}")
+        logger.info(f"Not incrementing attempt counter for stage '{stage_key}' as 'needs_section_rerun' is False or not set.")
+    
+    logger.debug(f"Current rerun flags: {json.dumps(state.get('needs_section_rerun',{}), indent=2)}")
     return state
 
-def should_rerun_section(section: str, state: AgentState) -> bool:
+def _validate_output_generic(state: AgentState, stage_to_validate: str, content_to_validate: str, system_message_for_validator: str) -> AgentState:
     """
-    Determine if a section needs to be rerun based on validation state and attempt count.
+    A generic helper function to perform validation using an OpenAIAgent.
+    It updates the state with validation result, feedback, and pass/fail status.
+
+    Args:
+        state: The current workflow state.
+        stage_to_validate: The key for the stage being validated (e.g., "section1", "combined").
+        content_to_validate: The actual string content (e.g., summary, analysis) to be validated.
+        system_message_for_validator: The system message guiding the validation agent.
+
+    Returns:
+        The updated AgentState with validation fields populated.
     """
-    current_attempt = state['section_attempts'].get(section, 0)
-    if current_attempt >= state['max_attempts']:
-        logger.info(f"Max attempts ({state['max_attempts']}) reached for {section}, skipping rerun")
-        return False
-    logger.info(f"Checking rerun for {section}: attempt {current_attempt}/{state['max_attempts']}, needs_rerun={state['needs_section_rerun'].get(section, False)}")
-    return state['needs_section_rerun'].get(section, False)
+    max_attempts = state.get('max_attempts', 1) # Default to 1 if not set
+    current_attempt = state.get('section_attempts', {}).get(stage_to_validate, 0)
+
+    logger.info(f"Validating {stage_to_validate} (Attempt {current_attempt}/{max_attempts})")
+
+    validation_agent = OpenAIAgent(
+        name=f"{stage_to_validate}_validation_agent",
+        system_message=system_message_for_validator  # Use the specific system message
+    )
+    
+    # Reinforce output format in user prompt
+    prompt = (
+        "Remember: Only respond with 'APPROVED' or 'REJECTED: <detailed reason for rejection>'. "
+        "Do not provide any other text or explanation. Ensure your reason is specific enough "
+        "to guide corrections.\n\n"
+        f"Validate the following content for '{stage_to_validate}':\n\n{content_to_validate}"
+    )
+    
+    raw_validation_response = validation_agent.generate_reply([{'role': 'user', 'content': prompt}])
+    state['validation'] = raw_validation_response # Store the raw response
+    state['validation_feedback'] = raw_validation_response # Feedback is the full response
+    
+    # Determine if validation passed
+    validation_passed = raw_validation_response.strip().upper().startswith("APPROVED")
+    state['validation_passed'] = validation_passed
+    
+    if not validation_passed:
+        logger.warning(f"Validation FAILED for {stage_to_validate}. Feedback: {raw_validation_response}")
+        # If validation failed, set rerun flag if under max attempts
+        if current_attempt < max_attempts: # Note: current_attempt is before increment for this try
+            state['needs_section_rerun'][stage_to_validate] = True
+            logger.info(f"Validation failed for {stage_to_validate} - will mark for retry (Attempt for next run: {current_attempt + 1}/{max_attempts})")
+        else:
+            state['needs_section_rerun'][stage_to_validate] = False # Max attempts reached, don't retry this stage
+            logger.warning(f"Validation failed for {stage_to_validate}, but max attempts ({max_attempts}) reached. No further retries for this stage.")
+    else:
+        logger.info(f"Validation PASSED for {stage_to_validate} (Attempt {current_attempt}/{max_attempts})")
+        state['needs_section_rerun'][stage_to_validate] = False # Reset rerun flag
+
+    return state
 
 def validate_section_output(state: AgentState, section: str) -> AgentState:
     """
-    Validate section outputs and summary together.
+    Validates the outputs and summary for a specific section.
+    Uses the generic validation helper `_validate_output_generic`.
     """
-    # Log the validation attempt for this section
-    logger.info(f"Validating {section} outputs and summary (Attempt {state['section_attempts'].get(section, 0)}/{state['max_attempts']})")
     outputs = state.get(f'{section}_outputs', {})
     summary = state.get(f'{section}_summary', '')
-    # Create a validation agent with strict instructions and examples for output format
-    validation_agent = OpenAIAgent(
-        name=f"{section}_validation_agent",
-        system_message=f"""You are a validation agent for {section}. Review the section outputs and summary for accuracy, consistency, and data support.\nIf everything is valid, respond with exactly APPROVED.\nIf not, respond with exactly REJECTED: <reason>.\nDo not provide any other text or explanation.\nFor example:\n- APPROVED\n- REJECTED: The summary does not match the outputs.\nIf you do not follow this format, your response will be discarded."""
+    
+    content_for_validation = (
+        f"Section Outputs:\n{json.dumps(outputs, indent=2)}\n\n"
+        f"Section Summary:\n{summary}"
     )
-    # Add a user prompt reminder to reinforce the required format
-    prompt = f"Remember: Only respond with 'APPROVED' or 'REJECTED: <reason>'. Do not provide any other text.\n\nValidate the following {section} outputs and summary:\n\nOutputs:\n{json.dumps(outputs, indent=2)}\n\nSummary:\n{summary}"
-    # Get the validation agent's reply
-    state['validation'] = validation_agent.generate_reply([{'role': 'user', 'content': prompt}])
-    state['validation_feedback'] = state['validation']
-    # Only treat as passed if the response starts with 'APPROVED'
-    state['validation_passed'] = state['validation'].strip().upper().startswith("APPROVED")
-    if not state['validation_passed']:
-        # If validation failed, set rerun flag if under max attempts
-        current_attempt = state['section_attempts'].get(section, 0)
-        if current_attempt < state['max_attempts']:
-            state['needs_section_rerun'][section] = True
-            logger.info(f"Validation failed for {section} - will retry (Attempt {current_attempt + 1}/{state['max_attempts']})")
-        else:
-            logger.info(f"Validation failed for {section} but max attempts reached")
-        logger.info(f"Validation feedback: {state['validation_feedback']}")
-    else:
-        # Reset rerun flag if validation passed
-        if state['needs_section_rerun'].get(section, False):
-            logger.info(f"Resetting needs_section_rerun[{section}] to False after successful validation.")
-        state['needs_section_rerun'][section] = False
-        logger.info(f"Validation passed for {section} (Attempt {state['section_attempts'].get(section, 0)}/{state['max_attempts']})")
-    return state
+    
+    validator_system_message = (
+        f"You are a meticulous validation agent for survey analysis, specifically for '{section}'. "
+        "Review the provided section outputs (per-question analyses) and the overall section summary. "
+        "Check for:\n"
+        "1. Accuracy: Does the summary correctly reflect the key findings in the outputs?\n"
+        "2. Consistency: Are there contradictions between outputs or between outputs and summary?\n"
+        "3. Data Support: Are claims in the summary and outputs supported by data (even if data isn't explicitly shown to you, infer if claims are plausible)?\n"
+        "4. Clarity and Conciseness: Is the language clear and to the point, avoiding jargon where possible?\n"
+        "If everything is valid, respond with exactly APPROVED.\n"
+        "If not, respond with exactly REJECTED: <Provide a specific, actionable reason for rejection, detailing what needs to be fixed. For example, 'REJECTED: The summary for Q2 analysis overstates the findings; the output for Q2 indicates a weaker trend.'>"
+    )
+    return _validate_output_generic(state, section, content_for_validation, validator_system_message)
 
 def validate_combined_output(state: AgentState) -> AgentState:
     """
-    Validate combined summary against all section summaries.
+    Validates the combined summary against all section summaries.
+    Uses the generic validation helper `_validate_output_generic`.
     """
-    # Log the validation attempt for the combined summary
-    logger.info(f"Validating combined summary (Attempt {state['section_attempts'].get('combined', 0)}/{state['max_attempts']})")
     combined_summary = state.get('combined_summary', '')
     section_summaries = {
         'section1': state.get('section1_summary', ''),
@@ -428,359 +683,385 @@ def validate_combined_output(state: AgentState) -> AgentState:
         'section3': state.get('section3_summary', ''),
         'section4': state.get('section4_summary', '')
     }
-    # Create a validation agent with strict instructions and examples for output format
-    validation_agent = OpenAIAgent(
-        name="combined_validation_agent",
-        system_message="""You are a validation agent for the combined summary. Review the combined summary against all section summaries for accuracy, consistency, and data support.\nIf everything is valid, respond with exactly APPROVED.\nIf not, respond with exactly REJECTED: <reason>.\nDo not provide any other text or explanation.\nFor example:\n- APPROVED\n- REJECTED: The summary does not match the outputs.\nIf you do not follow this format, your response will be discarded."""
+    content_for_validation = (
+        f"Combined Summary:\n{combined_summary}\n\n"
+        f"Section Summaries (for context):\n{json.dumps(section_summaries, indent=2)}"
     )
-    # Add a user prompt reminder to reinforce the required format
-    prompt = f"Remember: Only respond with 'APPROVED' or 'REJECTED: <reason>'. Do not provide any other text.\n\nValidate the following combined summary against section summaries:\n\nCombined Summary:\n{combined_summary}\n\nSection Summaries:\n{json.dumps(section_summaries, indent=2)}"
-    # Get the validation agent's reply
-    state['validation'] = validation_agent.generate_reply([{'role': 'user', 'content': prompt}])
-    state['validation_feedback'] = state['validation']
-    # Only treat as passed if the response starts with 'APPROVED'
-    state['validation_passed'] = state['validation'].strip().upper().startswith("APPROVED")
-    if not state['validation_passed']:
-        # If validation failed, set rerun flag if under max attempts
-        current_attempt = state['section_attempts'].get('combined', 0)
-        if current_attempt < state['max_attempts']:
-            state['needs_section_rerun']['combined'] = True
-            logger.info(f"Validation failed for combined summary - will retry (Attempt {current_attempt + 1}/{state['max_attempts']})")
-        else:
-            logger.info("Validation failed for combined summary but max attempts reached")
-        logger.info(f"Validation feedback: {state['validation_feedback']}")
-    else:
-        # Reset rerun flag if validation passed
-        if state['needs_section_rerun'].get('combined', False):
-            logger.info(f"Resetting needs_section_rerun['combined'] to False after successful validation.")
-        state['needs_section_rerun']['combined'] = False
-        logger.info(f"Validation passed for combined summary (Attempt {state['section_attempts'].get('combined', 0)}/{state['max_attempts']})")
-    return state
+    validator_system_message = (
+        "You are a meticulous validation agent for a combined survey summary. "
+        "Review the combined summary against the individual section summaries provided for context. Check for:\n"
+        "1. Synthesis Quality: Does the combined summary accurately synthesize key findings from all sections without misrepresentation?\n"
+        "2. Completeness: Does it capture the most critical overarching themes?\n"
+        "3. Consistency: Does it align with the section summaries without contradiction?\n"
+        "If everything is valid, respond with exactly APPROVED.\n"
+        "If not, respond with exactly REJECTED: <Provide a specific, actionable reason. Example: 'REJECTED: Combined summary misses the critical security concern highlighted in Section 3 summary.'>"
+    )
+    return _validate_output_generic(state, "combined", content_for_validation, validator_system_message)
 
 def validate_country_output(state: AgentState) -> AgentState:
     """
-    Validate all country analyses at once and determine if the entire country analysis needs to be rerun.
+    Validates all country-specific analyses.
+    Uses the generic validation helper `_validate_output_generic`.
     """
-    # Log the validation attempt for country analyses
-    logger.info(f"Validating all country analyses (Attempt {state['section_attempts'].get('country', 0)}/{state['max_attempts']})")
     country_analyses = state.get('country_analysis', {})
-    # Create a validation agent with strict instructions and examples for output format
-    validation_agent = OpenAIAgent(
-        name="country_validation_agent",
-        system_message="""You are a validation agent for country analyses. Review all country analyses for accuracy, consistency, and data support.\nIf everything is valid, respond with exactly APPROVED.\nIf not, respond with exactly REJECTED: <reason>.\nDo not provide any other text or explanation.\nFor example:\n- APPROVED\n- REJECTED: The summary does not match the outputs.\nIf you do not follow this format, your response will be discarded."""
+    content_for_validation = f"Country Analyses:\n{json.dumps(country_analyses, indent=2)}"
+    
+    validator_system_message = (
+        "You are a meticulous validation agent for country-specific API security analyses. "
+        "Review all provided country analyses. For each country, check if the analysis is:\n"
+        "1. Data-Driven: Is the analysis clearly based on the (implied) data for that country?\n"
+        "2. Insightful: Does it offer unique insights or highlight notable trends for that country?\n"
+        "3. Clear and Specific: Is the analysis clear, avoiding vague statements?\n"
+        "If all country analyses are valid, respond with exactly APPROVED.\n"
+        "If not, respond with exactly REJECTED: <Provide a specific reason, mentioning which country's analysis is problematic and why. Example: 'REJECTED: The analysis for Germany makes a generic claim not substantiated by specific trends.'>"
     )
-    # Add a user prompt reminder to reinforce the required format
-    prompt = f"Remember: Only respond with 'APPROVED' or 'REJECTED: <reason>'. Do not provide any other text.\n\nValidate the following country analyses:\n\n{json.dumps(country_analyses, indent=2)}"
-    # Get the validation agent's reply
-    state['validation'] = validation_agent.generate_reply([{'role': 'user', 'content': prompt}])
-    state['validation_feedback'] = state['validation']
-    # Only treat as passed if the response starts with 'APPROVED'
-    state['validation_passed'] = state['validation'].strip().upper().startswith("APPROVED")
-    if not state['validation_passed']:
-        # If validation failed, set rerun flag if under max attempts
-        current_attempt = state['section_attempts'].get('country', 0)
-        if current_attempt < state['max_attempts']:
-            state['needs_section_rerun']['country'] = True
-            logger.info(f"Validation failed for country analyses - will retry (Attempt {current_attempt + 1}/{state['max_attempts']})")
-        else:
-            logger.info("Validation failed for country analyses but max attempts reached")
-        logger.info(f"Validation feedback: {state['validation_feedback']}")
-    else:
-        # Reset rerun flag if validation passed
-        if state['needs_section_rerun'].get('country', False):
-            logger.info(f"Resetting needs_section_rerun['country'] to False after successful validation.")
-        state['needs_section_rerun']['country'] = False
-        logger.info(f"Validation passed for country analyses (Attempt {state['section_attempts'].get('country', 0)}/{state['max_attempts']})")
-    return state
+    return _validate_output_generic(state, "country", content_for_validation, validator_system_message)
 
 def validate_persona_output(state: AgentState) -> AgentState:
     """
-    Validate all persona outputs against combined summary and country analysis.
+    Validates all persona-based interpretations against the combined summary and country analysis.
+    Uses the generic validation helper `_validate_output_generic`.
+    If persona validation fails and the feedback suggests an issue with an earlier stage (like a specific section,
+    combined summary, or country data), it attempts to set the `needs_section_rerun` flag for that earlier stage
+    if that stage hasn't already maxed out its attempts. This allows for more targeted retries.
     """
-    # Log the validation attempt for persona outputs
-    logger.info(f"Validating persona outputs (Attempt {state['section_attempts'].get('personas', 0)}/{state['max_attempts']})")
     persona_outputs = state.get('persona_outputs', {})
-    combined_summary = state.get('combined_summary', '')
-    country_analysis = state.get('country_analysis', {})
-    # Create a validation agent with strict instructions and examples for output format
-    validation_agent = OpenAIAgent(
-        name="persona_validation_agent",
-        system_message="""You are a validation agent for persona analyses. Review all persona outputs against the combined summary and country analysis for accuracy, consistency, and data support.\nIf everything is valid, respond with exactly APPROVED.\nIf not, respond with exactly REJECTED: <reason>.\nDo not provide any other text or explanation.\nFor example:\n- APPROVED\n- REJECTED: The summary does not match the outputs.\nIf you do not follow this format, your response will be discarded."""
-    )
-    # Add a user prompt reminder to reinforce the required format
-    prompt = f"Remember: Only respond with 'APPROVED' or 'REJECTED: <reason>'. Do not provide any other text.\n\nValidate the following persona outputs against source data:\n\nPersona Outputs:\n{json.dumps(persona_outputs, indent=2)}\n\nCombined Summary:\n{combined_summary}\n\nCountry Analysis:\n{json.dumps(country_analysis, indent=2)}"
-    # Get the validation agent's reply
-    state['validation'] = validation_agent.generate_reply([{'role': 'user', 'content': prompt}])
-    state['validation_feedback'] = state['validation']
-    # Only treat as passed if the response starts with 'APPROVED'
-    state['validation_passed'] = state['validation'].strip().upper().startswith("APPROVED")
-    if not state['validation_passed']:
-        # If validation failed, set rerun flag if under max attempts
-        current_attempt = state['section_attempts'].get('personas', 0)
-        if current_attempt < state['max_attempts']:
-            state['needs_section_rerun']['personas'] = True
-            logger.info(f"Validation failed for personas - will retry (Attempt {current_attempt + 1}/{state['max_attempts']})")
-        else:
-            # If we've maxed out persona retries, check if we need to retry earlier sections
-            feedback = state['validation'].lower()
-            if any(section in feedback for section in ['section1', 'section2', 'section3', 'section4']):
-                section_to_rerun = next(section for section in ['section1', 'section2', 'section3', 'section4'] if section in feedback)
-                if state['section_attempts'].get(section_to_rerun, 0) < state['max_attempts']:
-                    state['needs_section_rerun'][section_to_rerun] = True
-                    logger.info(f"Validation failed for personas - will retry {section_to_rerun} (Attempt {state['section_attempts'][section_to_rerun]}/{state['max_attempts']})")
-            elif 'combined' in feedback and state['section_attempts'].get('combined', 0) < state['max_attempts']:
-                state['needs_section_rerun']['combined'] = True
-                logger.info(f"Validation failed for personas - will retry combined (Attempt {state['section_attempts']['combined']}/{state['max_attempts']})")
-            elif 'country' in feedback and state['section_attempts'].get('country', 0) < state['max_attempts']:
-                state['needs_section_rerun']['country'] = True
-                logger.info(f"Validation failed for personas - will retry country (Attempt {state['section_attempts']['country']}/{state['max_attempts']})")
-            else:
-                logger.info("Validation failed for personas but max attempts reached for all sections")
-        logger.info(f"Validation feedback: {state['validation_feedback']}")
-        logger.info(f"Rerun flags set: {json.dumps(state['needs_section_rerun'], indent=2)}")
-    else:
-        # Reset rerun flag if validation passed
-        if state['needs_section_rerun'].get('personas', False):
-            logger.info(f"Resetting needs_section_rerun['personas'] to False after successful validation.")
-        state['needs_section_rerun']['personas'] = False
-        logger.info(f"Validation passed for personas (Attempt {state['section_attempts'].get('personas', 0)}/{state['max_attempts']})")
-    return state
+    combined_summary = state.get('combined_summary', '') # Context for validation
+    country_analysis_data = state.get('country_analysis', {}) # Context for validation
 
-def get_next_node(current_section: str, state: AgentState) -> str:
+    content_for_validation = (
+        f"Persona Interpretations:\n{json.dumps(persona_outputs, indent=2)}\n\n"
+        f"For Context - Combined Survey Summary:\n{combined_summary}\n\n"
+        f"For Context - Country Analysis Data:\n{json.dumps(country_analysis_data, indent=2)}"
+    )
+    
+    validator_system_message = (
+        "You are a meticulous validation agent for persona-based interpretations of survey data. "
+        "Review each persona's interpretation. Check if it:\n"
+        "1. Aligns with Persona: Is the interpretation consistent with the defined persona's viewpoint?\n"
+        "2. Based on Data: Does it logically follow from the provided combined summary and country analyses?\n"
+        "3. Insightful and Concise: Is it insightful and briefly stated?\n"
+        "If all persona interpretations are valid, respond with exactly APPROVED.\n"
+        "If not, respond with exactly REJECTED: <Provide a specific reason, mentioning which persona and why their interpretation is flawed. Example: 'REJECTED: The Customer persona's concern about X is not supported by the combined summary.' "
+        "If the issue stems from an earlier stage (e.g. 'REJECTED: Persona analysis is weak because the section1 summary was too vague'), mention the problematic source, like 'section1', 'combined', or 'country'.>"
+    )
+    
+    # Perform the generic validation first
+    updated_state = _validate_output_generic(state, "personas", content_for_validation, validator_system_message)
+
+    # Custom logic for persona validation: if rejected, check if feedback points to an earlier stage
+    if not updated_state['validation_passed']:
+        feedback_text = updated_state.get('validation_feedback', '').lower()
+        stages_to_check_for_rerun = ['section1', 'section2', 'section3', 'section4', 'combined', 'country']
+        
+        # Check if feedback indicates a problem with an earlier specific stage
+        # and if that stage can still be rerun.
+        for stage_key in stages_to_check_for_rerun:
+            if stage_key in feedback_text:
+                # Check if this earlier stage has attempts remaining
+                if updated_state.get('section_attempts', {}).get(stage_key, 0) < updated_state.get('max_attempts', 1):
+                    updated_state['needs_section_rerun'][stage_key] = True
+                    logger.info(f"Persona validation failed. Feedback ('{feedback_text[:50]}...') implicates '{stage_key}'. Marking '{stage_key}' for rerun.")
+                    # If one upstream stage is identified, break to avoid marking multiple for simplicity,
+                    # or refine logic to mark all implicated and runnable stages.
+                    # For now, let's assume the first identified runnable upstream stage is the primary cause.
+                    break 
+                else:
+                    logger.warning(f"Persona validation feedback implicates '{stage_key}', but it has no remaining attempts.")
+        
+        # If no specific earlier stage was marked for rerun (or implicated), the 'personas' stage itself is marked by _validate_output_generic.
+        # If 'personas' stage itself has maxed out, this complex retry won't happen.
+        if not any(updated_state['needs_section_rerun'].get(s_key, False) for s_key in stages_to_check_for_rerun) and \
+           not updated_state['needs_section_rerun'].get('personas', False):
+            logger.info("Persona validation failed, but no specific earlier stage could be marked for rerun based on feedback, or 'personas' stage itself cannot be rerun.")
+
+    logger.info(f"Final rerun flags after persona validation: {json.dumps(updated_state.get('needs_section_rerun',{}), indent=2)}")
+    return updated_state
+
+def get_next_node(current_section_key: str, state: AgentState) -> str:
     """
-    Determine the next node based on current section and validation state.
+    Determines the next node in a predefined linear sequence of processing.
+    NOTE: The actual graph flow in `main` uses more complex conditional logic based on
+    `needs_section_rerun` and `validation_passed`, making this function somewhat
+    redundant for the primary path, but it can serve as a fallback or for simpler flows.
+
+    Args:
+        current_section_key: The key of the section/stage that just finished.
+        state: The current workflow state (not actively used in this simple router).
+
+    Returns:
+        The key of the next node to execute.
     """
-    if current_section == 'section1':
-        return 'process_section2'
-    elif current_section == 'section2':
-        return 'process_section3'
-    elif current_section == 'section3':
-        return 'process_section4'
-    elif current_section == 'section4':
-        return 'process_combined'
-    elif current_section == 'combined':
-        return 'process_country'
-    elif current_section == 'country':
-        return 'process_personas'
-    elif current_section == 'personas':
-        return 'save_report'
-    return 'save_report'
+    # This is a simple linear progression. The main graph uses conditional edges.
+    # This function might be more of a conceptual guide or for simpler graph structures.
+    sequence = ['section1', 'section2', 'section3', 'section4', 'combined', 'country', 'personas', 'save_report']
+    try:
+        current_index = sequence.index(current_section_key)
+        if current_index + 1 < len(sequence):
+            return f"process_{sequence[current_index + 1]}" if sequence[current_index + 1] not in ['combined', 'country', 'personas', 'save_report'] else sequence[current_index+1]
+        else:
+            return END # Should be 'save_report' then END as per graph.
+    except ValueError:
+        logger.warning(f"Unknown section key '{current_section_key}' in get_next_node. Defaulting to 'save_report'.")
+        return 'save_report' # Fallback
 
 def save_final_report(state: AgentState) -> AgentState:
     """
-    Save the final report to a JSON file and a text file.
-    
+    Saves the final compiled report data to both a JSON file and a Markdown file.
+    The output files are stored in the `output/` directory.
+
     Args:
-        state: Current workflow state
-        
+        state: The final state of the workflow, containing all summaries and analyses.
+
     Returns:
-        Updated state
+        The state, unchanged (as this is typically an end node).
     """
-    logger.info("Saving final report")
+    logger.info("Saving the final consolidated report.")
     
-    # Save JSON report
-    report = {
+    output_dir = Path("output")
+    output_dir.mkdir(parents=True, exist_ok=True) # Ensure output directory exists
+    
+    # Structure the report data for JSON output
+    final_report_data = {
+        'overall_summary': state.get('combined_summary', "Not available"),
         'section_summaries': {
-            'section1': state['section1_summary'],
-            'section2': state['section2_summary'],
-            'section3': state['section3_summary'],
-            'section4': state['section4_summary']
+            'section1': state.get('section1_summary', "Not available"),
+            'section2': state.get('section2_summary', "Not available"),
+            'section3': state.get('section3_summary', "Not available"),
+            'section4': state.get('section4_summary', "Not available")
         },
-        'combined_summary': state['combined_summary'],
-        'country_analysis': state['country_analysis'],
-        'country_summary': state['country_summary'],
-        'persona_outputs': state['persona_outputs'],
-        'retry_info': {
-            'section_attempts': state['section_attempts'],
-            'needs_section_rerun': state['needs_section_rerun']
+        'country_specific_analysis': state.get('country_analysis', {}),
+        # 'country_summary': state.get('country_summary', "Not available"), # Seems unused based on current state structure
+        'persona_based_interpretations': state.get('persona_outputs', {}),
+        'workflow_metadata': {
+            'retry_attempts_details': state.get('section_attempts', {}),
+            'final_rerun_flags_before_save': state.get('needs_section_rerun', {}) # Rerun flags at the point of saving
         }
     }
     
-    with open('output/final_report.json', 'w') as f:
-        json.dump(report, f, indent=2)
+    json_report_path = output_dir / 'final_survey_analysis_report.json'
+    with open(json_report_path, 'w') as f:
+        json.dump(final_report_data, f, indent=4)
+    logger.info(f"Final JSON report saved to: {json_report_path}")
     
-    # Save text report
-    with open('output/final_report.md', 'w') as f:
-        f.write("=== Final Report ===\n\n")
+    # Structure the report data for Markdown output
+    md_report_path = output_dir / 'final_survey_analysis_report.md'
+    with open(md_report_path, 'w', encoding='utf-8') as f:
+        f.write("# Comprehensive Survey Analysis Report\\n\\n")
 
-        f.write("--- Overall Summary ---\n")
-        f.write(f"{report['combined_summary']}\n\n")
+        f.write("## Overall Summary\\n")
+        f.write(f"{final_report_data['overall_summary']}\\n\\n")
         
-        f.write("--- Section Summaries ---\n")
-        for section, summary in report['section_summaries'].items():
-            f.write(f"{section}:\n{summary}\n\n")
+        f.write("## Detailed Section Summaries\\n")
+        for sec, summary_text in final_report_data['section_summaries'].items():
+            f.write(f"### Summary for {sec.replace('_', ' ').title()}\\n")
+            f.write(f"{summary_text}\\n\\n")
     
-        f.write("--- Country Analysis ---\n")
-        for country, analysis in report['country_analysis'].items():
-            f.write(f"{country}:\n{analysis}\n\n")
+        if final_report_data['country_specific_analysis']:
+            f.write("## Country-Specific Analysis\\n")
+            for country, analysis_text in final_report_data['country_specific_analysis'].items():
+                f.write(f"### Analysis for {country}\\n")
+                f.write(f"{analysis_text}\\n\\n")
+        
+        if final_report_data['persona_based_interpretations']:
+            f.write("## Persona-Based Interpretations\\n")
+            for persona, interp_text in final_report_data['persona_based_interpretations'].items():
+                f.write(f"### Interpretation from {persona.replace('_', ' ').title()} Perspective\\n")
+                f.write(f"{interp_text}\\n\\n")
+        
+        f.write("---\\nGenerated by the Survey Analysis Agent.\\n")
+    logger.info(f"Final Markdown report saved to: {md_report_path}")
     
-    return state
+    return state # Typically an end node returns the state or signals completion
 
 def main():
     """
-    Main function to set up and run the workflow.
+    Main function to define, compile, and run the LangGraph-based survey analysis workflow.
+    It initializes the agent state, sets up all processing and validation nodes,
+    and defines the edges (transitions) between them, including conditional logic for retries.
     """
-    # Initialize state
-    initial_state: AgentState = {
-        "section1_outputs": {},
-        "section2_outputs": {},
-        "section3_outputs": {},
-        "section4_outputs": {},
-        "section1_summary": "",
-        "section2_summary": "",
-        "section3_summary": "",
-        "section4_summary": "",
+    logger.info("Starting main workflow setup for Survey Analysis Agent.")
+    
+    # Initialize the state for the workflow
+    # max_attempts is crucial: 0 means no retries, 1 means one original attempt + one retry, etc.
+    # Setting max_attempts to 1 allows for one retry after an initial failure.
+    # If max_attempts is N, total runs can be N+1.
+    # Let's set max_attempts to 2 for initial run + up to 2 retries (total 3 attempts per problematic stage).
+    # For production, this might be 1 (total 2 attempts).
+    initial_max_attempts = 1 # Defines how many *retries* are allowed. So total attempts = initial_max_attempts + 1.
+                            # If initial_max_attempts = 1, a stage runs, fails, retries once. Total 2 runs.
+                            # If initial_max_attempts = 0, a stage runs, fails, no retry. Total 1 run.
+
+    initial_agent_state: AgentState = {
+        "section1_outputs": {}, "section2_outputs": {}, "section3_outputs": {}, "section4_outputs": {},
+        "section1_summary": "", "section2_summary": "", "section3_summary": "", "section4_summary": "",
         "combined_summary": "",
-        "country_analysis": {},
-        "country_summary": "",
+        "country_analysis": {}, "country_summary": "", # country_summary seems unused
         "persona_outputs": {},
-        "validation": "",
-        "validation_feedback": "",
-        "section_attempts": {
-            "section1": 0,
-            "section2": 0,
-            "section3": 0,
-            "section4": 0,
-            "combined": 0,
-            "country": 0,
-            "personas": 0
+        "validation": "", "validation_feedback": "", "validation_passed": False,
+        "section_attempts": { # Stores number of times a stage has been *started*
+            "section1": 0, "section2": 0, "section3": 0, "section4": 0,
+            "combined": 0, "country": 0, "personas": 0
         },
-        "max_attempts": 1,
-        "needs_section_rerun": {
-            "section1": False,
-            "section2": False,
-            "section3": False,
-            "section4": False,
-            "combined": False,
-            "country": False,
-            "personas": False
+        "max_attempts": initial_max_attempts, # Max *retries* allowed per stage.
+        "needs_section_rerun": { # Flags to indicate if a stage needs a rerun
+            "section1": False, "section2": False, "section3": False, "section4": False,
+            "combined": False, "country": False, "personas": False
         }
     }
     
-    # Create graph
-    workflow = StateGraph(AgentState)
+    # Instantiate the StateGraph with the defined AgentState
+    workflow_graph = StateGraph(AgentState)
     
-    # Add nodes for each section
-    for section in ['section1', 'section2', 'section3', 'section4']:
-        workflow.add_node(f"process_{section}", lambda s, sec=section: process_section_questions(sec, s))
-        workflow.add_node(f"summarize_{section}", lambda s, sec=section: process_section_summary(sec, s))
-        workflow.add_node(f"validate_{section}", lambda s, sec=section: validate_section_output(s, sec))
-        workflow.add_node(f"increment_attempt_{section}", lambda s, sec=section: increment_attempt(s, sec))
+    # Define all nodes in the graph
+    # Section processing, summarization, validation, and attempt increment nodes
+    sections_keys = ['section1', 'section2', 'section3', 'section4']
+    for sec_key in sections_keys:
+        workflow_graph.add_node(f"process_{sec_key}", lambda s, current_sec=sec_key: process_section_questions(current_sec, s))
+        workflow_graph.add_node(f"summarize_{sec_key}", lambda s, current_sec=sec_key: process_section_summary(current_sec, s))
+        workflow_graph.add_node(f"validate_{sec_key}", lambda s, current_sec=sec_key: validate_section_output(s, current_sec))
+        workflow_graph.add_node(f"increment_attempt_{sec_key}", lambda s, current_sec=sec_key: increment_attempt(s, current_sec))
     
-    # Add other nodes
-    workflow.add_node("process_combined", process_combined_summary)
-    workflow.add_node("validate_combined", validate_combined_output)
-    workflow.add_node("increment_attempt_combined", lambda s: increment_attempt(s, "combined"))
-    workflow.add_node("process_country", process_country_analysis)
-    workflow.add_node("validate_country", validate_country_output)
-    workflow.add_node("increment_attempt_country", lambda s: increment_attempt(s, "country"))
-    workflow.add_node("process_personas", process_personas)
-    workflow.add_node("validate_personas", validate_persona_output)
-    workflow.add_node("increment_attempt_personas", lambda s: increment_attempt(s, "personas"))
-    workflow.add_node("save_report", save_final_report)
+    # Nodes for combined summary, country analysis, persona analysis, and saving the report
+    workflow_graph.add_node("process_combined", process_combined_summary)
+    workflow_graph.add_node("validate_combined", validate_combined_output)
+    workflow_graph.add_node("increment_attempt_combined", lambda s: increment_attempt(s, "combined"))
     
-    # Add edges from START to first section
-    workflow.add_edge(START, "process_section1")
+    workflow_graph.add_node("process_country", process_country_analysis)
+    workflow_graph.add_node("validate_country", validate_country_output)
+    workflow_graph.add_node("increment_attempt_country", lambda s: increment_attempt(s, "country"))
     
-    # Define section flow
-    sections = ['section1', 'section2', 'section3', 'section4']
-    for i, section in enumerate(sections):
-        # Process -> Summarize -> Validate flow
-        workflow.add_edge(f"process_{section}", f"summarize_{section}")
-        workflow.add_edge(f"summarize_{section}", f"validate_{section}")
+    workflow_graph.add_node("process_personas", process_personas)
+    workflow_graph.add_node("validate_personas", validate_persona_output) # This validation can trigger reruns of earlier stages
+    workflow_graph.add_node("increment_attempt_personas", lambda s: increment_attempt(s, "personas")) # Increments persona attempt itself
+
+    workflow_graph.add_node("save_report", save_final_report)
+    
+    # Define the entry point of the graph
+    workflow_graph.set_entry_point("process_section1") # Start with processing section 1
+    
+    # Define the flow for each section (process -> summarize -> validate)
+    for i, current_sec_key in enumerate(sections_keys):
+        workflow_graph.add_edge(f"process_{current_sec_key}", f"summarize_{current_sec_key}")
+        workflow_graph.add_edge(f"summarize_{current_sec_key}", f"validate_{current_sec_key}")
         
-        # Get next node
-        next_node = "process_combined" if i == len(sections) - 1 else f"process_{sections[i + 1]}"
+        # Determine the next logical stage after this section (or combined summary if it's the last section)
+        next_stage_after_section = f"process_{sections_keys[i + 1]}" if i + 1 < len(sections_keys) else "process_combined"
         
-        # Add validation edges - only go to increment_attempt if validation failed and retry is needed
-        workflow.add_conditional_edges(
-            f"validate_{section}",
-            lambda state, s=section, n=next_node: f"increment_attempt_{s}" if not state['validation_passed'] and state['needs_section_rerun'][s] else n,
+        # Conditional logic after validation of a section:
+        # If validation passed OR (validation failed AND needs_rerun is false (e.g. max attempts reached for this section)): move to next stage.
+        # If validation failed AND needs_rerun is true: move to increment_attempt for this section.
+        workflow_graph.add_conditional_edges(
+            f"validate_{current_sec_key}",
+            lambda state, s_key=current_sec_key: f"increment_attempt_{s_key}" if (not state['validation_passed'] and state['needs_section_rerun'].get(s_key, False)) else next_stage_after_section,
             {
-                f"increment_attempt_{section}": f"increment_attempt_{section}",
-                next_node: next_node
+                f"increment_attempt_{current_sec_key}": f"increment_attempt_{current_sec_key}", # Path if retry is needed and possible for this section
+                next_stage_after_section: next_stage_after_section # Path if validation passed or no retry for this section
             }
         )
         
-        # Add increment_attempt edges - only retry if we haven't hit max attempts
-        workflow.add_conditional_edges(
-            f"increment_attempt_{section}",
-            lambda state, s=section, n=next_node: f"process_{s}" if state['needs_section_rerun'][s] and state['section_attempts'].get(s, 0) < state['max_attempts'] else n,
+        # After incrementing attempt for a section:
+        # If needs_rerun is true for this section (implicitly, attempts < max_attempts was true in validate_...): retry processing this section.
+        # Else (needs_rerun is false, likely because max attempts hit or an earlier error cleared it): move to the next logical stage.
+        workflow_graph.add_conditional_edges(
+            f"increment_attempt_{current_sec_key}",
+            # Check if the current section still needs a rerun AND its own attempts are not exhausted.
+            lambda state, s_key=current_sec_key: f"process_{s_key}" if (state['needs_section_rerun'].get(s_key, False) and state['section_attempts'].get(s_key, 0) <= state['max_attempts']) else next_stage_after_section,
             {
-                f"process_{section}": f"process_{section}",
-                next_node: next_node
+                f"process_{current_sec_key}": f"process_{current_sec_key}", # Path to retry the current section
+                next_stage_after_section: next_stage_after_section # Path if no retry for this section (e.g. max attempts for it was reached)
             }
         )
     
-    # Add combined analysis flow
-    workflow.add_edge("process_combined", "validate_combined")
-    workflow.add_conditional_edges(
+    # Define flow for combined summary
+    workflow_graph.add_edge("process_combined", "validate_combined")
+    workflow_graph.add_conditional_edges(
         "validate_combined",
-        lambda state: "increment_attempt_combined" if not state['validation_passed'] and state['needs_section_rerun']['combined'] else "process_country",
-        {
-            "increment_attempt_combined": "increment_attempt_combined",
-            "process_country": "process_country"
-        }
+        lambda state: "increment_attempt_combined" if (not state['validation_passed'] and state['needs_section_rerun'].get('combined', False)) else "process_country",
+        {"increment_attempt_combined": "increment_attempt_combined", "process_country": "process_country"}
     )
-    
-    workflow.add_conditional_edges(
+    workflow_graph.add_conditional_edges(
         "increment_attempt_combined",
-        lambda state: "process_combined" if state['needs_section_rerun']['combined'] and state['section_attempts'].get('combined', 0) < state['max_attempts'] else "process_country",
-        {
-            "process_combined": "process_combined",
-            "process_country": "process_country"
-        }
+        lambda state: "process_combined" if (state['needs_section_rerun'].get('combined', False) and state['section_attempts'].get('combined', 0) <= state['max_attempts']) else "process_country",
+        {"process_combined": "process_combined", "process_country": "process_country"}
     )
     
-    # Add country analysis flow
-    workflow.add_edge("process_country", "validate_country")
-    workflow.add_conditional_edges(
+    # Define flow for country analysis
+    workflow_graph.add_edge("process_country", "validate_country")
+    workflow_graph.add_conditional_edges(
         "validate_country",
-        lambda state: "increment_attempt_country" if not state['validation_passed'] and state['needs_section_rerun']['country'] else "process_personas",
-        {
-            "increment_attempt_country": "increment_attempt_country",
-            "process_personas": "process_personas"
-        }
+        lambda state: "increment_attempt_country" if (not state['validation_passed'] and state['needs_section_rerun'].get('country', False)) else "process_personas",
+        {"increment_attempt_country": "increment_attempt_country", "process_personas": "process_personas"}
     )
-    
-    workflow.add_conditional_edges(
+    workflow_graph.add_conditional_edges(
         "increment_attempt_country",
-        lambda state: "process_country" if state['needs_section_rerun']['country'] and state['section_attempts'].get('country', 0) < state['max_attempts'] else "process_personas",
-        {
-            "process_country": "process_country",
-            "process_personas": "process_personas"
-        }
+        lambda state: "process_country" if (state['needs_section_rerun'].get('country', False) and state['section_attempts'].get('country', 0) <= state['max_attempts']) else "process_personas",
+        {"process_country": "process_country", "process_personas": "process_personas"}
     )
     
-    # Add persona analysis flow
-    workflow.add_edge("process_personas", "validate_personas")
-    workflow.add_conditional_edges(
+    # Define flow for persona analysis
+    # Validation of personas can trigger reruns of earlier stages if feedback indicates.
+    workflow_graph.add_edge("process_personas", "validate_personas")
+    workflow_graph.add_conditional_edges(
         "validate_personas",
-        lambda state: "increment_attempt_personas" if not state['validation_passed'] and any(state['needs_section_rerun'].values()) else "save_report",
+        lambda state: "increment_attempt_personas" if (not state['validation_passed'] and any(state['needs_section_rerun'].get(s_key, False) for s_key in list(sections_keys) + ['combined', 'country', 'personas'])) else "save_report",
         {
-            "increment_attempt_personas": "increment_attempt_personas",
-            "save_report": "save_report"
+            "increment_attempt_personas": "increment_attempt_personas", # Go to increment persona attempts (which then decides actual next step)
+            "save_report": "save_report" # If validation passed or no rerun indicated/possible
         }
     )
     
-    workflow.add_conditional_edges(
+    # After incrementing persona attempts, decide what to do:
+    # - If any *earlier* stage needs a rerun (section1-4, combined, country) AND persona stage itself has attempts left for this complex retry: go to process_section1 (to restart chain).
+    # - If only 'personas' stage needs a rerun AND has attempts left: retry 'process_personas'.
+    # - Else (no stage needs rerun, or persona stage maxed out): go to save_report.
+    workflow_graph.add_conditional_edges(
         "increment_attempt_personas",
-        lambda state: "process_section1" if any(state['needs_section_rerun'].values()) and state['section_attempts'].get('personas', 0) < state['max_attempts'] else "save_report",
+        lambda state: 
+            # Condition 1: An earlier stage needs rerun (flagged by validate_personas) AND persona stage itself has attempts for this complex retry.
+            "process_section1" if any(state['needs_section_rerun'].get(s_key, False) for s_key in list(sections_keys) + ['combined', 'country']) and \
+                                  state['section_attempts'].get('personas', 0) <= state['max_attempts']
+            # Condition 2: Only 'personas' stage itself needs rerun and has attempts.
+            else "process_personas" if state['needs_section_rerun'].get('personas', False) and \
+                                        state['section_attempts'].get('personas', 0) <= state['max_attempts']
+            # Condition 3: Fallback to saving report.
+            else "save_report",
         {
-            "process_section1": "process_section1",
-            "save_report": "save_report"
+            "process_section1": "process_section1", # Restart from section1 if an upstream issue was found
+            "process_personas": "process_personas", # Retry only personas if that's the isolated issue
+            "save_report": "save_report"         # Otherwise, proceed to save
         }
     )
     
-    # Add final edge
-    workflow.add_edge("save_report", END)
+    # Define the end of the graph
+    workflow_graph.add_edge("save_report", END)
     
-    # Compile and run graph with increased recursion limit
-    app = workflow.compile()
-    config = RunnableConfig(recursion_limit=50)
-    result = app.invoke(initial_state, config=config)
+    # Compile the graph
+    logger.info("Compiling the LangGraph workflow.")
+    # A higher recursion limit might be needed for complex graphs with retries.
+    # The default is 25, which might be too low for multiple retries across stages.
+    app_runnable = workflow_graph.compile()
     
-    return result
+    # Invoke the workflow with the initial state
+    logger.info("Invoking the compiled LangGraph workflow.")
+    # Set a higher recursion limit for the execution if many retries are expected/possible.
+    # 50 should be sufficient for a few retries across multiple stages.
+    # max_attempts = 1 => each stage can run twice. 7 stages * 2 = 14. Plus graph overhead.
+    # max_attempts = 2 => each stage can run thrice. 7 stages * 3 = 21.
+    # If validate_personas triggers a full loop, that adds more.
+    execution_config = RunnableConfig(recursion_limit=100) # Increased recursion limit
+    
+    try:
+        final_state = app_runnable.invoke(initial_agent_state, config=execution_config)
+        logger.info("Workflow completed. Final state obtained.")
+        logger.debug(f"Final state details: {json.dumps(final_state, indent=2)}")
+    except Exception as e:
+        logger.error(f"Workflow execution failed with an error: {e}", exc_info=True)
+        # Potentially save partial state or error report here
+        final_state = {"error": str(e), "partial_state": initial_agent_state} # Capture error in final_state
+
+    logger.info("Survey Analysis Agent run finished.")
+    return final_state
 
 if __name__ == "__main__":
     main()
