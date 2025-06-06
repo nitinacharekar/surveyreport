@@ -4,6 +4,7 @@ import numpy as np
 import os
 import json
 from .scope_config import SCOPE_MAP
+from .question_config import QUESTION_MAP
 
 # Helper function to convert NumPy types to native Python types for JSON serialization
 def convert_to_py_types(obj):
@@ -161,11 +162,17 @@ def analyze_by_legend_label(df: pd.DataFrame, data_columns: List[str], legend_ma
 
     return analysis_by_legend 
 
-def run_analysis_and_print(data_file_name: str, scope_name: str, analysis_data_type: str, section: str):
+def run_analysis_and_print(question_key: str, scope_name: str, analysis_data_type: str, section: str):
     """
-    Runs the survey analysis for a given file and scope, and prints the output.
+    Runs the survey analysis for a given question and scope, and prints the output.
     Assumes a standard project directory structure.
     """
+    # --- Look up data file name ---
+    data_file_name = QUESTION_MAP.get(question_key)
+    if data_file_name is None:
+        print(f"Error: Question key '{question_key}' not found in configuration. Aborting analysis.")
+        return
+        
     # --- Look up scope ---
     # If scope_name is None or "Overall", scope_of_analysis will be None, triggering analysis on all countries.
     # Otherwise, get the list of countries from the config map.

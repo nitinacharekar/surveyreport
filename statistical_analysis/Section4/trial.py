@@ -2,8 +2,9 @@ from surveyreport.statistical_analysis.utils.survey_analysis import run_analysis
 
 # --- User Inputs ---
 
-# 1. The name of the Excel file in the data/<section> directory
-DATA_FILE_NAME = "27 How ready is your organization in mitigating these risks.xlsx"
+# 1. The question to analyze.
+#    Provide a key from the QUESTION_MAP in 'utils/question_config.py'.
+QUESTION_KEY = "How ready is your organization in mitigating these risks?"
 
 # 2. The section where the data file is located (e.g., "Section4")
 SECTION = "Section4"
@@ -20,7 +21,7 @@ ANALYSIS_DATA_TYPE = "string & number"
 # --- Run Analysis ---
 if __name__ == "__main__":
     run_analysis_and_print(
-        data_file_name=DATA_FILE_NAME,
+        question_key=QUESTION_KEY,
         scope_name=SCOPE_NAME,
         analysis_data_type=ANALYSIS_DATA_TYPE,
         section=SECTION
