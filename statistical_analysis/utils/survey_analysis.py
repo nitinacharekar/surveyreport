@@ -167,12 +167,19 @@ def run_analysis_and_print(question_key: str, scope_name: str, analysis_data_typ
     Runs the survey analysis for a given question and scope, and prints the output.
     Assumes a standard project directory structure.
     """
-    # --- Look up data file name ---
-    data_file_name = QUESTION_MAP.get(question_key)
-    if data_file_name is None:
+    # --- Look up question configuration ---
+    question_config = QUESTION_MAP.get(question_key)
+    if not question_config:
         print(f"Error: Question key '{question_key}' not found in configuration. Aborting analysis.")
         return
         
+    data_file_name = question_config.get("file_name")
+    data_columns = question_config.get("data_columns")
+
+    if not data_file_name or data_columns is None:
+        print(f"Error: 'file_name' or 'data_columns' not configured for question key '{question_key}'. Aborting analysis.")
+        return
+
     # --- Look up scope ---
     # If scope_name is None or "Overall", scope_of_analysis will be None, triggering analysis on all countries.
     # Otherwise, get the list of countries from the config map.
@@ -194,6 +201,7 @@ def run_analysis_and_print(question_key: str, scope_name: str, analysis_data_typ
     analysis_summary = analyze_excel(
         file_path=data_path,
         analysis_data_type=analysis_data_type,
+        data_columns=data_columns,
         country_scope=scope_of_analysis
     )
     
