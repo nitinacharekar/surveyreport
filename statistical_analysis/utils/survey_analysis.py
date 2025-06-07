@@ -96,11 +96,15 @@ def analyze_by_data_column(df: pd.DataFrame, data_columns: List[str], legend_map
 
                 ordered_counts_scope = counts_scope.reindex(list_of_ordered_labels).fillna(0)
 
+                total_count = counts_scope.sum()
+                cumulative_top_percent = (sorted_top_scope.cumsum() / total_count * 100).round(2)
+                cumulative_sequential_top_percent = (ordered_counts_scope.cumsum() / total_count * 100).round(2)
+
                 col_summary["string_analysis"] = {
                     "counts": counts_scope.to_dict(),
                     "rank_top": sorted_top_scope.index.tolist(),
-                    "cumulative_top": sorted_top_scope.cumsum().to_dict(),
-                    "cumulative_sequential_top": ordered_counts_scope.cumsum().to_dict()
+                    "cumulative_top": cumulative_top_percent.to_dict(),
+                    "cumulative_sequential_top": cumulative_sequential_top_percent.to_dict()
                 }
             else:
                  col_summary["string_analysis"] = {
@@ -151,11 +155,15 @@ def analyze_by_legend_label(df: pd.DataFrame, data_columns: List[str], legend_ma
         sequential_order = sorted(data_columns)
         ordered_counts = counts_series.reindex(sequential_order).fillna(0)
 
+        total_count = counts_series.sum()
+        cumulative_top_percent = (sorted_top.cumsum() / total_count * 100).round(2) if total_count > 0 else sorted_top.cumsum()
+        cumulative_sequential_top_percent = (ordered_counts.cumsum() / total_count * 100).round(2) if total_count > 0 else ordered_counts.cumsum()
+
         label_analysis["string_analysis_of_data_columns"] = {
             "counts": counts_series.to_dict(),
             "rank_top": sorted_top.index.tolist(),
-            "cumulative_top": sorted_top.cumsum().to_dict(),
-            "cumulative_sequential_top": ordered_counts.cumsum().to_dict()
+            "cumulative_top": cumulative_top_percent.to_dict(),
+            "cumulative_sequential_top": cumulative_sequential_top_percent.to_dict()
         }
         
         analysis_by_legend[label] = label_analysis

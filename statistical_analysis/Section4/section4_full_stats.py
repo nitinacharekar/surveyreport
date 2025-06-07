@@ -34,7 +34,7 @@ def get_section4_stats() -> dict:
     # .parent.parent is statistical_analysis
     # .parent.parent.parent is surveyreport (project_root)
     project_root = Path(__file__).resolve().parent.parent.parent
-    base_path = project_root / 'data' / 'Section 4'
+    base_path = project_root / 'data' / 'Section4'
     
     stats = {
         'q26': analyze_q26(str(base_path / '26 Select the top 3 OWASP API security risks your organization is most concerned about.xlsx')),
