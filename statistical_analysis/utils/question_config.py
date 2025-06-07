@@ -35,9 +35,16 @@ QUESTION_MAP = {
     },
     "What security measures does your organization currently have in place to protect APIs?": {
         "file_name": "28 What security measures does your organization currently have in place to protect APIs.xlsx",
-        # This question uses a different analysis script (q28.py) and data structure.
-        # The 'data_columns' concept does not directly apply in the same way.
-        # This entry is a placeholder for future refactoring.
-        "data_columns": []
+        "data_columns": [
+            "API Access Control in API Gateway",
+            "AI/ML-driven security solution",
+            "Web Application Firewall",
+            "Identity & Access Management Solution",
+            "Load-Balancer",
+            "Bot Protection",
+            "SIEM (Security Information & Event Management) & Log Management",
+            "DDoS Protection",
+            "Automated API Security Testing Tools"
+        ]
     }
 } 
